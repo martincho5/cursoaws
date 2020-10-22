@@ -1,0 +1,402 @@
+Apuntes AWS
+Regions - Cluster of DataCenters
+AWS - Availability Zones
+Min 2, Medio 3, Max 6. (2a - AZ letter)
+Alta conectividad entre cada AZ
+
+IAM is Global, no Region Selection (like Billing)
+
+Root Account should never be used (and shared)
+User
+Groups
+Roles for Machines or AWS resources
+Policies write in JSON - Agrupa los 3 UGR
+
+MFA - IAM - managed Policites
+User minimal amount - Lease privilege principles
+IAM Federation - Como AD / SAML
+IAM por persona
+Un Role para Aplicación
+IAM credentials no deben compartirse
+IAM credential nunca escribir en codigo.
+ROOT account solo para setuo inicial - nunca usar root IAM Credentials.
+-------------
+EC2 - VM
+EBS - Storage de VMs
+ELB - Load Balancing across VMs
+ASG - AutoScalling Group
+AMI - Amazon Machine Image
+For Certification use Amazon Linux 2 - es lo nuevo
+Network - es un VPC y la Subnet es en que Availability Zone va a ir
+Security Group - Firewall
+Tiene Rules de Inbound and Outbound
+Para multiples Instancias en un SG.
+Los Security Group son por Region/VPC. Se tiene que crear por región
+
+1 SG solo para el acceso SSH
+
+- EC2
+ - Stop
+ - Reboot
+ - Terminate (no quiero nada más - se borra)
+EC2 Instance Connect - Conectarme a la instancia desde un navegador.
+Default user ec2-user
+Linux chmod 0400 keyname - Cambiarlo
+ssh -i EC2Tutorial.pem ec2-user@18.221.68.113
+Poner solo el usuario y sacar la herencia.
+Mi usuario full access.
+Connection Timeout - SG problem
+EC2 instance connect solo funciona con AMI 2 de Linux
+
+Si da time out --- es un problema de Security Groups
+Si da Connection refused --- error de aplicacion o no fue lanzada la app
+
+Un SG puede autorizar a otro SG.
+-----------
+Private vs Public IP.
+Elastic IPs - es una IP fija para el EC2 para una sola instancia.
+5 Elastic IP en toda la cuenta - 
+Evitar el uso de Elastic IP - Usar mejor un DNS.
+O usar un Load Balancer.
+---------------------
+EC2 User Data Script - Corre con root
+Cuando realiza el primer booteo
+Cuando se crea la instancia en Configure Instance Details
+Advanced Details
+Está User Data
+Se escribre - As Text
+Primero el bin
+Corre con el comando sudo
+-------
+- On Demand - Se paga por lo que usar. Solo prendida. Es la más cara. Para elastic Workload
+- Reserved:
+  - Reserved - 75% discount / Pay upfront from 1 or 3 years (Like Database)
+  - Convertible Reserved Instances - Puede cambiarse el EC2 Instance Type - 54%
+  - Scheduled Reserved Instances - Launch within time window you reserve / Fraction of day/Week/month
+- Spot Instances: discount upto to 90% compared to On-Demand
+  - Las instancias pueden perderse en cualquier momento del tiempo si el max price is less than the current spot price. 
+  - The MOST cost-efficient instances in AWS
+  - Para - Batch Jobs, Data analysis, image processing. Que se pueda
+  No para Databajes or un Job Critical.
+  Combo - Reserved Instance for baseline + On-Demand & Spot for peaks.
+- Dedicated Instances: (Van en examen)
+  HW dedicated to you
+  Share HW with instances in same account
+  No control over instalnce placement
+- Dedicated Hosts:
+  Full Control, visibilidad del socket.
+  Por 3 años y physical dedicated EC2
+  BYOL - More expensive
+------------------
+EC2 Spot Instance
+ - max spot price mientras el precion se menor
+ Spot Block
+ - 1 to 6 hours - Se tiene ese bloque sin interrupciones. (para Batchs)
+Spot Request
+- Max price
+- Number of instances
+- Launch specification
+- Request type: one-time | persistent
+- Valid from, Valid until
+Cancelar un Spot Request no termina la instancia. 
+1ero - Cancelar el Spot Request y después terminar las spot instance asociadas.
+Spot Fleets
+ - Spot Fleets = set of Spot Instances + (optional) On-Demand Instances
+ - The Spot Fleet will try to meet the target capacity with price constrains
+ - Definir los launch pools tipo de instancia, OS, Availability Zone
+ - Se pueden tener multiples launch pools para que Fleet pueda elegir
+ - Spot Fleets deja de lanzar instancias cuando llega a las capacidad o al costo máximo
+ Estrategias
+  - LowestPrice: Del pool que tenga el precio más bajo (optimización de costos, trabajos cortos)
+  - diversified: distributed a través de todos los pools (para Availability y trabajos largos)
+  - CapacityOptimized: capacidad óptoma para el número de instancias.
+Spot Fleets permite solicitar spot instance de forma automática con el precio más bajo.
+--------------------
+EC2 - Instance Type
+R:Aplicación que necesitan RAM - in memory caches
+C:aplicacion para CPU
+M:aplicanciones balanced
+I:aplicaciones que son buenas en I/O
+G:aplicaciones que necesitan Group
+
+T2/T3:burstable instances (up to a capacity).
+T2/T3: unlimited burst.
+
+T2/T3 - Cuando está funcionando igual
+      - burst credits, el CPU se vuelve terrible.
+      - Son buena para un pico de vez en cuando, pero es por crédito de burst.
+      - Si la máquina deja de burstear, los creditos se acumulan en el tiempo.
+T2/T3 unlimited burst
+  - Desde Nov 2017
+--------------------------------
+AMI
+ - Para Linux o Windows
+ - Pre installed packages
+ - Viene con monitoreo
+ - Con Seguridad
+ - Instalar AD
+ - Instalar apps
+ - optimización
+ - AMI es solo para una región específica
+Public AMI
+ - Se pueden compar
+AMI Storage
+ - Vive en un Amazon S3
+ - Las AMI son private 
+AMI Pricing
+ - Van el el Storage S3
+ - Remover los AMIs que no usamos
+Se puede compartir las AMI con otra cuenta de AWS
+Compartir la AMI no afecta el ownership de la AMI
+Si copias una AMI compartida, sos el dueño de la nueva AMI
+Para copiar la AMI compartida conmigo, me tiene que dar el dueño de la AMI, permisos de lectura sobre el almacenamiento donde está la AMI, EBS Snapshot o el bucker de S3.
+Limitaciones
+No se puede copiar una AMI encriptada.
+No se pueden copiar AMI que tengan asociadas un billingProduct code. Incluye Windows AMIs y AMIs from AWS Marketplace
+Para Copiar una share AMI con billing product, se lanza una instancia EC2 en mi cuenta usando la AMI compartida y luego creamos una AMI de esa instancia.
+---------------------
+Placemente Groups
+ - Se quiere tener control de donde quedan las instancias de EC2
+ - 3 Strategies
+   . Cluster - cluster instances en un grupo de baja latencia en una sola Availability Zone
+   . Spread - spread las instacias entre diferente hardware con un máximo de 7 instacias por grupo de AZ) - Para aplicaciones críticas.
+   . Partition - spread instances en diferentes particiones (en diferentes racks) en una AZ. Hasta 100s de EC2 instance (Hadoop,Cassandra,Kafka)
+ - Cluster
+   Están en el mismo Rack y el mismo AZ
+    Pros: Great network - 10 Gbps
+    Cons: Si el rack falla, todas las instancias fallan al mismo tiempo.
+    Use Case: Big Data Job/App con low latency y high network.
+ - Spread
+   Todas en diferentes HW
+    Pros: Van en diferentes AZ, Reduce el riesgo de falla, EC2 en diferente HW
+    Cons: Hasta 7 instancias por AZ por placemente group.
+ - Partition
+   Cada particion, son diferentes racks
+    Pros: Hasta 7 particiones por AZ, Hasta 100s of EC2 instances, La instancia de una particion no comparte el rack con otra particion, Si falla una partición afecta a varias EC2, EC2 accede a la metadata de la partition.
+    Use casds: HDFS, Cassandra, Kafka
+
+ENI (Elastic Network Interfaces)
+ - Representa a una Virtual Network Card 
+   Puede tener - One Elastic IP
+   Private IPv4.
+ - Se pueden crear ENI indepdendintes y atachar on the 
+ - Bound to specific AZ.
+ - Eth0 no puede ser detachada
+EC2 Hinernate
+ - Stop: la Data en el disco sigue intacto.
+ - Terminate: borra todo
+ - Hibernate: La data en la Ram se preserva. Bootea más rápido. Se baja la ram en un root EBS volume
+   Servicios que toman mucho tiempo en volver a insta
+   Hibernate solo soportado por C3,C4,C5,M3,M4,M5,R3,R4 y R5 (CMR)
+   RAM menos de 150 Gb.
+   No soportado para bare Metal 
+   AMI: Linux 2, Linux AMI, Ubuntu y Windows
+   RootVolume debe ser EBS encriptado
+   Solo para On-Demand y Reserved instance (no para Spot)
+   No más de 60 días.
+........
+EC2 for solutions architects
+ - EC2 son facturadas por segundo, t2.micro es free
+ - En Linux/Mac ssh y windows putty
+ - SSH port 22 y solo a mi IP
+ - Timeout issues - Problema de Security Group
+ - Permission issues on the SSH key - run chmod 0400
+ - Security Groups pueden referenciar a otros security groups en vez de rangos de IPs
+ - Diferencias entre Private, Public y Elastic IP
+ - EC2 User data
+ - 4 EC2 launch modes:
+   - On Demand
+   - Reserved - Por 1 años a 3 años
+   - Spot instances - Se pueden apagar
+   - Dedicated Hosts - Licence restricted.
+ - Basic instances (R,C,M,I,G,T2/T3)
+ - Create AMIs faster booteo
+ - AMI puede copiarse entre regiones y cuentas
+ - EC2 - Placement Groups: Cluster / Spread.
+##################################################33
+High Availability and Scalability
+- Scalability es que una aplicación puede soportar grandes cargas adaptandose
+  2 tipos: Scalability Vertical y Horizontal (elasticity)
+Vertical Scalability
+ - Increase a size of a instance. paso de t2.micro a t2.large.
+   Para sistemas no distribuidos como Bases de Datos, RDS, ElastiCache. Limite de Hw.
+Horizontal Scalability
+ - Aumentar el número de instancias
+ - Es para sistemas distribuidos, muy común en apps web y modern apps.
+High Availability
+ - Correr tu aplicacion o sistemas en al menos 2 datacentes - Availability Zone
+ - Para que siga corriendo en caso de caida de un DC.
+ EC2 - Vertical Scaling: t2.nano vs u-12tbl.emtal
+     - Horizontal Scaling: Auto Scaling Group, Load Balancer
+     - High Availability: Auto Scaling Group multi AZ, Load Balancer multi AZ.
+
+Load Balancing
+ - Forward internet traffic to multiple servers
+ - Spread Load
+ - Expose a single point of access DNS to appl
+ - Seamlesly handle failures of downstream instances
+ - Do regular health checks
+ - Provide SSL Termination for websites
+ - Enforce stickiness with cookies
+ - HA across zones
+ - Separate pulbic traffic from private traffic
+ ELB (EC2 Load Balancer)
+  - AWS guarantess that it wil be working
+  - AWS takes care of upgrade, maintenance, ha
+  - AWS provides only a few configuration knobs
+  - It costs less
+  - integrate with many AWS
+Health checks every 5 seconds
+  - Verifica que la instancia esté disponible y contestando los requests
+  - El health check se hace sobre un puerto y una ruta (/health generalmente)
+  - Si no es 200 (OK) la instancia la deja unhealth
+3 Tipos de Load Balancer on AWS
+ - Classic Load Balancer (v1 - old generation) - 2009
+   HTTP, HTTPS y TCP
+ - Application Load Balancer (v2 - new generation) - 2016
+   HTTP, HTTPS, WebSocket
+ - Network Load Balancer (v2 - new generation) - 2017
+   TCP, TLS (secure TCP) & UDP
+Recomendado utilizar los v2 generation
+2 Tipos, internal (private) o external (pulbic)
+Load Balancer Security Groups
+ - Ponemos una App Security group que solo permitimos el acceso del Load Balancer al servidor EC2
+El más seguro.
+LB (Load Balancer) cosas a saber
+ - LBs pueden escalar pero no instantaneamente
+ - Troubleshooting
+   - 4xx errores de cliente
+   - 5xx errores de aplicacion
+   - 503 problema de capacidad o no hay targets registrados
+ - Monitoring
+  - ELB tiene un access log para todos los accesos
+  - CloudWatch Metric da estadísticas agregadas.
+Classic
+ - Soporta TCP (Layer 4), HTTP y HTTPS (Layer 7)
+ - Health Checks TCP o HTTP
+ - Fixed hostname -
+Application LB
+ - Appl y Layer 7 (HTTP)
+ - Load balancing to multiple http apps across machines (target group)
+ - Load balancing to multiple app on the same machine (Containers)
+ - Support HTTP/2 and WebSocket
+ - Suppor redicts from HTTP to HTTPs
+ - Routing tables to different targent groups:
+   - Routing base on path in URL
+   - Routing based on hostname in URL
+   - Routing based on Query String, Headers.
+
+   ALB son muy bueno para micro servicios y applicaciones de contenedores
+   Port mapping feature to redirect to a dinamic port
+   En comparación, necesitamos multiples CLB por aplicación.
+ Target Groups
+  - EC2 instances (managed by auto scaling group) - HTTP
+  - ECS tasks - HTTP
+  - Lambda functions - HTTP request is translated into a JSON
+  - IP Addresses
+
+Good to know
+ - Fixed hostname (xxx.region.elb.amazonaws.com)
+ - The app server don't see the IP of teh cleint direct
+   - inserted in the header X-Forwarded-For
+   - Para el puerto X-Forwarded-Port y el proto (X-Forearded-Proto)
+NLB - Network Load Balancer
+- Es Layer 4:
+  - Forward TCP & UDP Traffic to you instances.
+  - Maneja millones de request por segundo
+  - Menos de 100 ms de latencia (en ALB son 400 ms)
+- NLB tien una IP estática por AZ, y soporta la asignación de Elastic IP
+  - Para extrem performance o TCP o UDP
+  - No está incluido en EC2 free tier.
+Load Balancer stickiness
+ - Same client to same instance.
+ - Trabaja con Clasic Load Balancers y Application Load Balancer.
+   La cookie tiene un día de expiración que uno controla.
+   Se usa para que el usuario no pierda sus datos de session
+   Trae un imbalance, puede que una EC2 mayor carga que otras.
+   Se configura en el ALB en el target group
+Cross-Zone Load Balancing
+ - Cada Load Balancer está distribuido a través de todas las instancias registrada en todas las AZ.
+ Sin Cross-Zone se tiene un NLB en cada zona.
+ En Classic Load Balancer
+  - Disabled by Default
+  - No charges for inter AZ data si es tá habilidado
+ En Application Load Balancer
+  - Siempre activo
+  - No charge for inter AZ data
+ En Network Load Balancer
+  - Disabled by Default
+  - Pay Charges for inter AZ
+Elastic Load Balancer
+SSL/TLS - Basics
+  - SSL - in-flight encryption - Secure Sockets Layer
+  - TLS sin los usados pero se los llama SSL
+  - Public SSL are issued by CA.
+  - Deben renovarse
+  - El Load Balancer usa los X.509 certificate.
+  - Se pueden administrar los certificados usando ACM (AWS Certificate Manager)
+  - Se puede subir nuestro certificado.
+  - HTTPS Listener:
+    - Especificar el certificado por defecto
+    - Agregar una lista opcional de certs para soportar multiples dominios
+    - Clientes puede usar SNI (Server Name Indication) para especificar el hostaname
+    - Especificar security policy para soportar versiones viejas de SSL/TLS
+  SSL - Server Name Infication
+   - SNI solves the problema of loading multiple SSL certificates onto one web server (para servir multiples websites)
+   - El cliente infica el hostname del servidore de destino en el handshake inicial de SSL
+   - El servidor encuentra el certificado correcto o devuelve el default.
+   - Solo funciona con ALB & NLB, CloudFront
+   - No funciona con CLB
+  CLB - Solo 1 certificado SSL / se usan multiples CLB para multiples hostnames.
+  ALB v2 - Multiple listeners with multiple SSL certificates / usa SNI
+  NLB v2 - Multiple listeners with multiple SSL certificates / usa SNI
+Connection Draining
+ - CLB: Connection Draining
+ - Target Group: Deregistration Delay (ALB & NLB)
+   - Es el tiempo para completar las requests que tiene mientras la instancia es de-registrada o unhealthy
+   - Stop sending new requests porque se está de-registering
+  Espera para finalizar la conección por default 300 sec y se puede customizar entre 1 y 3600 sec.
+   Pude deshabilitarse si el valor es 0.
+Auto Scaling Group (ASG)
+ - Sirve para 
+   - Scale out (agregar instancias EC2) para incrementar la carga
+   - Scale in (remover instancias EC2) para bajar la carga.
+   - Decrecer o incremente hasta un máximo.
+   - Automatically regsitrar nuevas intancias en el load balancer.
+ - Desired Capacity - Actual Size.
+    - Scale out - agrega instancias / Scale in - remuve instancias
+ - Atributos del ASGs.
+   - Configuración de inicio:
+      - AMI + Tipo de instancia
+      - EC2 user data
+      - EBS volumes
+      - Security Groups
+      - SSH Key Pair
+   - Min / Max / initial capacity
+   - Network + Subnets
+   - Load Balancer Information
+   - Scaling Policies
+ - Alarms
+  - Se puede escalar basado en alarmas de CloudWatch
+  - Se pueden crear
+ - New Rules
+  - Es posible definir mejores reglas de auto scaling en EC2
+    - Average CPU Usage
+    - Number of requests on the ELB per instance.
+    - Promedio de trafico de red entrente
+    - Promedio de trafico de red saliente
+  - Son fáciles para setup
+  - Custom Metric (ASG)
+    - Se puede auto escalar basado en métricas propieas.
+      Enviar metricas customizadas desde la aplicación en EC2 al cloud watcht
+      Crear una alarama de CloudWathc
+      Usar el CloudWatch alarm para sacar e scaling policy
+  - ASG use launch configuration or Launch Templates
+  - Para actualizar loa ASG, hay que proveer una nueva configuración
+  - IAM roles atachados en una ASG son asignados a la instancia de EC2
+  - ASG es gratis. Se paga por otros recursos que son lancazdos
+  - Ha
+ 
+         
+
+
