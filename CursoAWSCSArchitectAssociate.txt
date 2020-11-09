@@ -400,3 +400,317 @@ Auto Scaling Group (ASG)
          
 
 
+--------------------------
+Tipos de Volumenes EBS
+GP2
+ - Recomendado para la mayoria de los Worloads
+ - Para boot del sistema
+ - Para VDI
+ - Aplicaciones con baja latencia
+ - Ambientes de Desarrollo y Test.
+ - De 1 GB a 16 TB 
+ - Pequeños GP2 pueden llegar a un pico de IOPS de 3000
+ - Max IOPS 16.000, pero se dan 3 IOPs por GB eso quiere decir que cuando tengamos 5.334 GB estamos en el máximo de IOPS
+ El burst para que se tenga en cuenta tiene que ser el tamaño menor a 1000 GB
+ Si tengo un tamaño de 16384 las IPS son 16.000 poque es mayor a 5333 GB.
+IO1
+ - Para aplicaciones críticas, más de 16000 IOPS por Volumen
+ - Para Bases de Datos Grandes - Mongo, Cassandra, MS SQL, MySQL, Postgres, Oracle
+ - De 4 a 16 TB
+ - IOPS is provisioned (PIOPS) - Min 1000 Max 64000 (nitro instances) para el resto 32.000 el máximo.
+   El máximo ratio de PIOPS es de 50:1
+ST1
+ - Para Streaming workloads con fast throughput a bajo precio
+ - Big Data, Data Warehouse, Log processing
+ - Apache Kafka
+ - No puede ser boot
+ - De 500 Gb a 16 TB
+ - Max IOPS es 500 / throughput máximo 500 MiB/s
+SC1
+ - Volumenes grandes que no son accedidos con frecuencia
+ - Escenarios donde el costo de almacenamiento sea bajo
+ - No pude ser booteable
+ - de 500 Gb a 16 TB
+ - Max IOPs is 250
+ - Max throughput 250 MiB/s
+Resumen
+ - GP2 - General Purpose (cheap)
+ - IO1 - Provisioned IOPS (expensive)
+ - st1 - Throughput Optimized HDD
+ - sc1 - Cool HDD
+
+EBS Snapshots
+ - Incremental - solo los bloques que se cambian
+ - EBS backups usan IO con lo cual no hay que realizarlo cuando hay mucho tráfico en la aplicación
+ - Son grabados en S3
+ - No es necesario detachar el volumen para hacer snapshot, pero se recomiendo
+ - Máximo de 100.000 Snapshots
+ - Se pueden copiar Snapshots entre AZ o regiones
+ - Se pueden hacer AMI de un Snapshot
+ - Un volumen restaurado de un snapshot debe ser pre-warmed (usando fio o dd para leer todo el volumen)
+ - Se pueden automatizar con Amazon Data Lifecycle Manager.
+EBS Migration
+ - EBS volume solo en su AZ
+ - Para migrarlo, Snapshot, copya el volumen a otra región diferente, crear un volumen del snapshot en la Az que elegimos.
+EBS Encription
+ - Data at rest es encriptada en el volumen
+ - Todo los datos on the fly entre la instancia y el volumen están encriptados
+ - Todos los snapshots están encriptados.
+ - Todos los creados del snapshot tambíen están encriptados.
+ La encripción y desencripción se maneja en forma transparente.
+ Encryption tiene un impacto mínimo en la latencia
+ EBS encription key KMS (AES-256)
+ Copiar un snapshot desencritado, permite encriptarlo
+Encriptar un EBS no encriptado.
+ - Crear un EBS de un snapshot del Volumen.
+ - Encriptar el EBS Snapshot (usando copy)
+ - Crear un nuevo EBS volume del snapshot (el volumen va a estar encriptado)
+ - Atachar el volumen encriptado a la instancia original.
+Diferencias entre EBS vs Instance Store
+ - Algunas instancias no vienen con Root EBS volume
+ - Instance store está atachado físicamente a la máquina
+ - Pros - Better I/O, Good for buffer, cache, scractch data / Data sobrevive al reboot.
+ - Cons: Con el Stop o Termination, El instance store se pierde. No se puede agrandar on the fly. Los backups los tiene que hacer el usuario
+Local EC2 Instance Store
+ - Very High IOPS
+ - Disk Attached to physical server
+ - Hasta 7,5 Tb.
+ - Es un Block Storage (Como el EBS)
+ - No se puede incrementar el tamaño.
+ - Riesgo de que los datos se pierdan si el hw falla.
+EBS RAID Options
+ - EBS se replica en el AZ.
+ - Si queremos llegar a 100.000 IOPS?
+ - Mirror porque no confio en EBS.
+ - RAID es posible si tu SO lo soporta.
+ - RAID 0 y 1 OK
+ - RAID 5 y 6 no recomendados para EBS.
+ RAID 0 y RAID 1
+ - RAID 0 incrementa la performance.
+ - Si un disco falla, los datos se pierden.
+ - Discos Grandes con muchos IOPS.
+ - RAID 1 para fault tolerance
+ - Se escribe en ambos al mismo tiempo.
+ - 2x network - Mejor el throughput .
+EFS Overview
+ - Elastic File System
+   - Managed NFS que puede ser montado en varios EC2.
+   - EFS trabaja con EC2 en Multiples AZ.
+   - Alta disponibilidad, escalable, caro (sale 3x gp2), se paga por uso.
+   - Casos de uso: Content Managment, web serving, data sharing, Wordpress
+   - NFSv4.1 protocol
+   - Security Group para controlar el acceso al EFS.
+   - Compatible con Linux base AMI (not windows)
+   - Encription at rest
+   - Para POSIX File systemas standard file API
+   - File system scala automáticamente, no es necesario un capacity planning
+ - EFS Scale
+   - 1000s of concurrent NFS client, 10 GB+/s throughput
+   - Grow hasta petabytes automaticamente.
+ - EFS performance mode (se especifica cuando se crea)
+   - Proposito general: sensible a la latencia (web server)
+   - Max I/O - higher latency (big data, media processing)
+ - Storage Tiers (Lifecycle Managment feature - moveing files after N days)
+   - standard - Frequently access files
+   - Infrequent access (EFS-IA): costo mayor para leer archivos, baja el precio de almacenamiento.
+EBS vs EFS
+ - EBS Volume
+   - attach a un instancia por vez.
+   - Solo en 1 AZ
+   - Para migrarlo, tomar snapshot, restaurar el snapshot en otro AZ
+   - Root EBS se terminan cuando se termina una instancia ECs (se puede deshabilitar)
+ - EFS 
+   - Mounting 100s of instances across AZ.
+   - EFS share website files
+   - Only Linux
+   - EFS-IA para bajar el costo.
+   - Por uso se paga.
+######################################
+AWS RDS
+ - RDS - Relational Database Service
+ - Es una DB manejada para DBs que usan SQL query language.
+ - Creadas DBs en la nube
+   - Postgres, MySQL, MariaDB, Oracle, MS SQL, Aurora
+ RDS vs EC2 instance.
+  - RDS es una servicio administrado:
+     - Provisionamiento automático, patching OS
+     - Continous backups and restore
+     - Dashboard de monitoreo
+     - Lectura de réplicas para mejorar la performance de lectura
+     - Muti AZ for DR (Dissaster Recovery)
+     - Ventanas de mantenimiento para upgrades
+     - Capacidad de escalar (vertical y Horizontal)
+     - almacenamiento por EBS (gp2 o IO1)
+     But you can't ssh into your instances.
+  - RDS backups
+     - Soy activados en forma automática
+     - Daily full backup
+     - Transaction logs backup cada 5 minutos
+     - 7 days retention by default (se puede incrementar a 35 días)
+     DB snapshots
+      - Ejecutados en forma manual por el usuario.
+      - Los backup por lo más largo que uno quiera.
+ RDS Read Replicas for read Scalability
+  - Se pueden crear hasta 5 Replicas de Lectura
+  - Entre las misma AZ, Cross AZ o Cross Region.
+  - Replica Asincronica para que las lecturas sean eventualmente consistentes.
+  - Las replicas puede promoverse como DB owner.
+  - La aplicación hay que cambiarla el connection string para que la lecturas vayan a las replicas.
+ RDS Read Replicas - Use Cases
+  - Queremos realizar Reportes y algo de analítica.
+  - Creamos una replica de lectura y los reportes los busca ahí.
+  - En una Read Replica solo soporta SELECT.
+ RDS Read Replicas - Network cost
+  - En AWS hay un costo de red cuando se va de una Az a otra Az.
+  - Para ahorar puedo tener la replica en la misma Az. No tiene costo en la misma Az.
+ RDS Multi AZ (Disaster Recovery)
+  - Sync replication en AZ B - En standby.
+  - One DNS name - Failover automático
+  - Sirve en caso de Falla de AZ, perdida de red, instancio o falla de almacenamiento.
+  - No hay que hacer intervención en las apps.
+  - No es para scaling, está en standby.
+  - Las Read Replicas pueden setearse como Multi Az for DR.
+ RDS Security - Encryption
+  - At Rest Encryption
+    - Encripta el master y la replica con AWS KMS - AES-256
+    - Se define la encripción en el momento del inicio.
+    - Si el master no está encriptado, la réplica tampoco puede.
+    - Trasparent Data Encryption (TDE) disponible para Oracle y SQL Server.
+  - In-flight encryption
+    - Certificados SSL para encriptar datos a RDS in flight.
+    - Brinda SSL con certificados de confianza cuando se conecta a la base de datos.
+    - Para forzar SSL:
+       - PostgresSQL: rds.force_ssl=1 en AWS RDS Console
+       - En MySQL, en la DB: GRANT USE ON *.* TO 'mysqlyser'@'%' REQUIRE SSL;
+  - RDS Encryption Operations
+    - Encriptad backups
+      - Snapshot de una base no encriptada, no está encriptado.
+      - Snapshot de una base encriptada, encripta los mismos.
+      - Se puede copiar un snapshot en uno encriptado.
+    - Como encriptar una RDS database no encriptada:
+      - Se crea un snapshot de la bd
+      - Copiamos y lo tenemos encriptado.
+      - Restauramos la base de datos encriptada del snapshot
+      - Migramos las Apps a la nueva base de datos y borramos la vieja.
+  - RDS Security - Netwrok & IAM
+    - Network Security
+      - RDS en un private subnet.
+      - RDS le deja la seguridad a los security groups (Como EC2)
+    - Access Management
+      - IAM policies permiten controla quien administra AWS RDS (through the RDS API)
+      - Se puede usar user and password para login en la DB.
+      - IAM based autentication puede ser usuado en MySQL y PostgreSQL.
+  - RDS - IAM Authentication
+    - Funciona con MySQL y PostgresSQL
+    - Se maneja con autentication token que se obtiene con las RDS API Calls.
+    - Auth token tiene una vida de 15 minutos
+    - Beneficios
+      - La comunicación de Red de entrada y salida está encriptada con SSL.
+      - IAM para manejar los usuarios en forma centralizada.
+      - Se puede dejar IAM Roles y EC2 profiles para integración sencilla.
+  RDS AWS responsability:
+   - No SSH access
+   - No Manual DB patching
+   - No manual OS patching
+   - No way to audit the undelying instance.
+
+Aurora Overview
+ - Es una tecnología propietaria de AWS.
+ - Postgres y MySQL son soportadas en AuroraDB
+ - Aurora es AWS Cloud Oprimized - 5x performances mysql y 3x contra Postgres.
+ - El almacenamiento crece en forma incremental de 10 Gb hasta 64 Tb.
+ - Puede tener 15 replicas y el proceso es más rápido.
+ - Failover en Aurora es instantáneo. Es HA nativo.
+ - Aurora costa más que los RDS (20% más)
+ Aurora HA y Read Scaling
+ - 6 copias de los datos en 3 AZ:
+   - 4 copias necesarias para escribir.
+   - 3 copias de 6 necesita para leer.
+   - Self healing with peer-to-peer replica
+   - Storage striped accross 100s of volumes.
+ - 1 Aurora toma la escrituras (master)
+ - Failover automática en menos de 30 segundos.
+ - Master + hasta 15 replicas de lectura.
+ - Soportan Cross Region Replication.
+ Aurora DB Cluster
+ - Master es el único que escribe.
+   Hay una Writer Endpoint apuntando a la master.
+ - AutoScalling en la replicas de lectura.
+   Reader Endpoint - Conection Load Balancing.
+ Features de Aurora.
+  - Automatic Failover
+  - Backup and Recovery
+  - Isolation and Security
+  - Industry Compliance
+  - Push-Button scaling
+  - Automated patching with zero downtime
+  - Advanced Monitoring
+  - Routine maintenance
+  - Backtrack: restore data at any point of time withour usign backups
+ Aurora Security
+  - Similar RDS
+  - Encripción at Rest
+  - Backup automaticos, snapshot y replicas son encriptadas.
+  - Encripción on the flight SSL
+  - Posibilidad de autenticar con IAM token
+ Aurora Serverless
+  - Autmated database instantiation and auto scaling base on actual usage.
+  - Bueno para trabajos infrecuentes, intermittent o unpredictable.
+  - No capacity planning needed.
+  - Pay per second.
+  - Proxy Fleet manejado por aurora.
+  Sube y baja hasta 0 aurora.
+ Global Aurora
+  - Replicas de Aurora entre regiones
+   - Para DR, simple de realizar.
+  - Aurora Global Database
+   - 1 Region primaria para read/write
+   - Hasta 5 secundarias en read only, con lags menores al segundo.
+   - Hasta 16 read replicas por región secundario.
+   - Ayuda a decrece latency
+   - RTO para promover hacia otra región es de menos de 1 minuto.
+AWS ElastiCache Overview
+ - ElastiCache is to get managed Redis or Memcached
+ - Caches son base de datos en memoria con alta performance y baja latencia.
+ - Ayuda a deducir la carga en la base de datos para lecturas intensivas.
+ - Ayuda a que las aplicaciones sean Stateless
+ - Write scaling usdin sharding
+ - Read Scaling using Read Replicas
+ - Multi AZ con Failover Capacity
+ - AWS se ocupa del OS, patching, optimización, setup, configuración, monitoreo, failover recovery y backups,}
+ Solution Architectura - DB Cache
+  - App query primero a ElastiCache, si no está disponible, lo obtiene del RDS y lo guarda en el ElastiCache.
+  - Cache hit alto, mejor.
+  - Cache miss va a las agrega el ElastiCache.
+  - Cache debe tener una estrategia de invalidación para que solo los datos más actuales son usados.
+ Solution Architecure - User Session Store
+  - La app graba la session en ElatiCache.
+  - The users hits another instance of application.
+  - La instancia devuelve los datos del usuario ya logueado.
+ ElastiCache - Redis vs Memcached
+  - Redis
+    - Multi Az con auto failover.
+    - Read replicas para escalar lecturas y ha
+    - Durabilitiy data usando AOF presistence
+    - Backup y restore features
+  - Memcached
+    - Mutli node para particionar los datos (sharding)
+    - Non persistent
+    - No backup
+    - Multithreaded Architecture.
+ ElastiCache - Cache security
+  - All caches in ElastiCache:
+    - Support SSL in flight encryption
+    - Do not support IAM Authentication
+    - IAM policies on ElastiCache solo son usada para la AWS API-level security
+  - Redis Auth
+    - Se setea un "passwrod/token" cuando se crea el cluter de Redis
+    - En un nivel extra de seguridad (además del SG)
+  - Memcached
+    - Suporta SASL based autentication
+ ElastiCache for Solution Architecture
+  - Patrones para ElastiCache
+     - Lazy Loading: Toda la data a leer es levantada en cache, está stale in cache.
+     - Write through: Add or update data en cache cuando se escribe en la DB.
+     - Session Store: Almacena temporalmente los datos de session en cache (usando TTL feature)
+
