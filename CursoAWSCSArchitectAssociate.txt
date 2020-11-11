@@ -396,9 +396,50 @@ Auto Scaling Group (ASG)
   - IAM roles atachados en una ASG son asignados a la instancia de EC2
   - ASG es gratis. Se paga por otros recursos que son lancazdos
   - Ha
- 
-         
+ ----
+En el AutoScalling Group tenemos el launch template es el nuevo y configuration es la versión viejas
+Launch Template permite spot y configuration un solo tipo de máquina
+Auto Scaling Groups - Scaling Policies
+Target Tracking Scaling
+ - Most simple and easy to set-up
+Simple/ Step scaling
+ - When a CloudWatch alarm is triggered (example C PU > 70%), entonces agregá 2 unidades
+ - When a CloudWatch alarm is triggeres then remove si pasa algo, remover 1 unidades
+Scheduled Actions
+ - Anticipate a scaling based on know usage patterns
+ - En un horario especifico se sube la capacidad mínima
+Scaling Cooldown
+ - The cooldown period ayuda a asegurar que el auto scaling group no lance y termine instancias adicionales antes que tome efecto la actividad previa.
+ - Se puede crear para simple scaling policy.
+ - override el default cooldown period.
+ - El default cooldown es de 300 segundos, se puede bajar a 180 segundos.
+LifeCycle Hooks
+Pending: Wait to Pending:Proceed para verificar cosas.
+Terminating:Wait to terminating:Proceedr para extraer cosas antes de bajarla.
 
+Diferencias entre Launch template vs Launch configuration
+ - Launch Configuration (legacy) se recrea cada vez que se cambiarse
+ - Launch Template (newer) Puede tener multiples versiones, crear parametrops y usar on-demand and spot intances o un mix de ambas.
+ - Usar el T2 y recomended by AWS going forward.
+-----------------------------
+EBS volume
+EBS (Elastic Block Storage) Volume es un drive de red que se puede atachar a una instania que está corriendo.
+Los datos persisten.
+ - Es un network drive. Puede haber latencia.
+ - Se puede desatacher a una instancia y atachar a otr rápidamente
+ - Solo puede ser usado en el AZ que fue creado, no se puede attachar a otro AZ
+ - Se puede mover entre AZ, pero hay que hacer un snapshot.
+ - Cuando se crea pide el tamaño y los IOPS necesarios - Se cobra por la capacidad entera, no por el uso.
+ - Se puede incrementar la capacidad hacia adelante. Empezar chiquito.
+EBS volumen 4 tipos:
+ - GP2 (SSD) - SSD de proposito general para variadas cargas
+ - IO1 (SSD) - Alta performance, mission critical low-latency
+ - ST1 (HDD) - Bajo costo para acceso frecuente. carga intensiva
+ - SC1 (HDD) - Bajo costo diseñado para baja carga
+Son caracterizados por Tamañano, Thoughput, IPOS 
+Solo los GP2 y IO1 pueden ser usados como boot volumes.
+EBS - Volume Types Use Cases
+ - GP" - de 1 Gb a 16 Tb      
 
 --------------------------
 Tipos de Volumenes EBS
@@ -713,4 +754,7 @@ AWS ElastiCache Overview
      - Lazy Loading: Toda la data a leer es levantada en cache, está stale in cache.
      - Write through: Add or update data en cache cuando se escribe en la DB.
      - Session Store: Almacena temporalmente los datos de session en cache (usando TTL feature)
+------------------------------------
+###############################
+------------------------------------
 
