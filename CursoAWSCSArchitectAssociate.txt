@@ -758,3 +758,14 @@ AWS ElastiCache Overview
 ###############################
 ------------------------------------
 
+Route 53 - Managed DNS
+A record: hostnama
+AAAA record: hostname IPv6
+CNAME: hostname to hostname
+Alias: hostname a recurso de AWS
+
+Maneja Public Domain y private domain.
+Advanced Feature:
+ Load Balancing, Health checks y routing policies
+Se paga 0.50 por mes por zona hosteada.
+
