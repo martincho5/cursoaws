@@ -1,4 +1,7 @@
 Apuntes AWS
+
+5 pilar de un buen Architecture - Costs, Performance, Reliability, Security, Operational Excelence.
+
 Regions - Cluster of DataCenters
 AWS - Availability Zones
 Min 2, Medio 3, Max 6. (2a - AZ letter)
@@ -768,4 +771,302 @@ Maneja Public Domain y private domain.
 Advanced Feature:
  Load Balancing, Health checks y routing policies
 Se paga 0.50 por mes por zona hosteada.
+
+high TTL - 24 hs. - Poco tráfico al DNS y outdated records
+Low TTL - 60 seconds - Easy to change, more traffic to DNS, Record outdated less time
+
+CNAME no sirve para root domain.
+Alias apunta a una AWS Resource. Sirve para Root domain y non root domain. Gratis y tienen un chequeo de salud del servicio. Casi siempre alias porque es gratis.
+Las IPs pueden tener diferentes Weight (pesos) Control el % de request
+
+Routing Policies
+ - Weighted
+ - latency - Va del usuario a la región de AWS que está más cerca.
+
+Health Checks
+ - Si 3 fallan da error.
+ - Chequea cada 30 segundos.
+ - Fast Helt 10 segundos
+ - 15 health checkers
+ - Verifica HTTP, TCP y HTTP (no verifica SSL)
+ Puede integrarse con CloudWatch
+
+Failover Routing policy
+ - Para un DRP
+
+GeoLocation Routing policy
+ - Es un ruteo que según el origen del tráfico es a que IP tiene que ir
+
+Multivalue
+ - Se pueden obtener hasta 8 healthy records for each Multivalue
+ - Para rutear tráfico a multiples recursos.
+ - NO subtituye ELB, pero permite un balanceo.
+Route53 - es un domain registrar
+ - Son cosas distintas DNS y registrar
+-------------------
+****************
+-------------------
+Session_id lo ponemos en un ElastiCache para tener las cosas del carrito.
+ElastiCache es más seguro que la Cookie.
+Grabamos datos de la persona en Amazon RDS.
+Scaling Reads - RDS Master - Write y RDS Replica only for read (otra opción es ElastiCache y RDS sola se hace en la aplicación)
+RDS - Mutli AZ lo tiene igual que ElasticCache.
+Security Group solo ellos pueden acceder al ElasticCache o RDS
+
+Aurora MySQL es más que RDS para un Wordpress
+Multi AZ y Read Replicas.
+EFS mejor para compartir imágenes.
+ENI para conectar al EFS
+EBS es más barato de EFS (File Share)
+Para que las aplicaciones salgan rápido se crea una Golden AMI
+AMI y User Data (user data para obtener datos de una base de datos para el momento del inicio del EC2 y la app)
+RDS y EBS snapshot para poner los datos en otro lado.
+
+ElasticBeanStalk is a developer centric view.
+3 Tipos de arquitecturas
+ - Single Instance - Developer
+ - LB + ASG - Production o Pre-Produccion
+ - ASG: Para applicaciones no web en Producción
+3 componentes:
+ - Application
+ - Application Version
+ - Enviroment name
+Deploy app version to enviroment.
+Rollback feature
+Full Control Lifecycle enviroment
+Support for many platforms:
+
+------------------
+**********
+------------------
+Amazon S3 el más importante Building
+Infinitely scaling de almacenamiento
+Muchos sitios web está como backbone.
+
+En S3 se guardan objetos (archivos) en Buckets (directorios)
+Cada Bucket tiene un nombre único a nivel global.
+Se definen por región
+Convención de nombre - sin mayusculas, son underscore, 3-63 caracteres, no una IP,tiene que empezar con lowercase letra o número
+Objects
+ - Files - tienen un key.
+ - El key es el full path - s3://my-bucket/"my_file.txt" el key entre comillas 
+ - El Key prefix + object name (my_file.txt el object name)
+ - No existe el concepto de directorios
+ - Max object size is 5TB
+ - No se puede subir más de 5GB, hay que hacerlo por partes.
+ - Metada - Key/value pairs - system or user metadata
+ - Tags (unicode key/value pair hasta 10) - Para security o Lifecycle
+ - Version ID (if versioning are enable)
+S3 es una consola global, pero los buckets son por región.
+Versioning S3
+ - Primero hay que activarlo a nivel de Bucket
+ - Por cada key overwrite increment version
+ - Facil roolback y es una muy buena práctica.
+ - Si se suspende el versionado, no borra las versiones anteriores.
+ - Cuando hay versionado si borras lo marca como borrado, pero no lo borra, hay que listar version y ahí buscar el permanent delete.
+Encripción S3
+ - 4 métodos para encriptar objetos
+   - SSE-S3 - Administrador por AWS
+   - SSE-KMS: AWS Key management Service
+   - SSE-C: Keys propios
+   - Client Side Encryption
+SSE-S3
+ - Keys manejadas por Amazon S3
+ - Server Side
+ - AES-256 encryption type
+ - Set Header "x-amz-server-side-encryption":"AES256"
+SSE-KMS
+ - Key Management Service manejas las Keys
+ - Control de Quien usa cada key: user control + audit EC2Tutorial
+ - Object encripted server side
+ - header "x-amz-server-side-encryption":"aws:kms"
+SSE-C (solo con AWS CLI)
+ - Keys outside AWS
+ - HTTPS para usar
+ - Key tiene que venir en el HTTP headers.
+Client Side Encryption
+ - Client library lis Amazon S3 Encrypt Client
+ - Client encriptar antes de subir
+ - Client desencripta cuando lo baja.
+
+Encripcion en transito (SSL/TLS)
+S3 si es HTTPS está encriptado on the flight.
+HTTPS by default.
+HTTPS mandatory for SSE-C.
+
+S3 Security
+User based
+ - IAM Policies - API Calls
+Resource based
+ - Bucket Policies - bucket wide rules form the S3 Console
+ - Object Access Control List (ACL) - finer generation
+ - Bucket Access Control List (ACL) - Less common
+
+ IAM Principal pude acceder al S3 object si el IAM lo permite o si el resource policies.
+ Si no hay explicitamente denegado.
+
+ JSON based policies.
+  - Resources: Buckets and object.
+  - Actions: Allow or Deny
+  - Principal: The account or user to apply the policy to
+S3 bucket for policy para:
+  - Permitir acceso publico
+  - Forzar objetos para ser encriptados.
+  - Permitir acceso a Cross Account.
+
+Buckets setting para Block Public Access.
+  - Block object for public access
+    - New ACLs
+    - Any ACLs
+    - New public bucket or access point policies
+  - Block for any public bucket or access point policies.
+  - Prevent company data leak.
+Others:
+ - Netwroking - Supports VPC endpoints
+ - Logging and Audit - S3 access store in other S3 bucket
+ - API calls can be logge in AWS CloudTrail.
+ - USer Sec: MFA delete or Pre-Signed URLs.
+
+S3 website
+ - Si tenemos un error 403 fijarse si está público para leer el bucket.
+ - url: "bucketname".s3-website-"AWS Region".amazonaws.com
+
+S3 CORS 
+ - Origin is a scheme (protocol), host (domain) and port
+ - CORS - Cross-Origin Resource sharing
+ - Web Browser allow requests a otros origenes visitando el main origin.
+ WebBrowser - Access-Control-Allow-Origin: ... and Methods.
+ - Tenemos que habilitar CORS headers para especificar si vamos a tener un cross origin en el S3
+ Habilitar en el CROSS Origin.
+
+S3 - Consistency Models
+ - Read after write consistency for PUTS of new objects.
+  - cuando se escribe, se pude obtener. PUT 200 => GET 200
+    Excepto que tratemos de ver el objeto antes que el objeto exista. Get 404 => Put 200 => Get 404.
+ - Eventual Consistency for DELETES and PUTS of existings objects.
+    Puede tarda en reflejar la actualización.
+ No hay forma de solicitar strong consistency
+ -----------------------------
+ AWS CLI, SDK, IAM Roles.
+
+ Nunca se ponen las credenciales en una instancia de EC2 - Se usan IAM Roles para el Client
+ Solo puede tener un IAM Role cada EC2.
+
+ Inline Policy - No puede poner en otro rol. No se recomienda.
+
+Existe un AWS Policy Simulator - https://policysim.aws.amazon.com/
+AWS Policy Generator - https://awspolicygen.s3.amazonaws.com/policygen.html
+
+EC2 Instance metadata
+- Permite a los EC2 ver quienes son
+- http://169.254.169.254/latest/meta-data solo funciona internamente.
+Podemos obtener el nombre del IAM Role, pero no nos trae la policy.
+- Sirve mucho para automatizar.
+
+Esperan que sepamos que cosas van por SDK y cuales no.
+
+AWS SDK - es recomendable usar "default credential provider chain"
+ - Se pone en /.aws/credentials
+ - Instance profile
+ - Enviroment Variables (AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY)
+
+ Never ever guardadr credenciales en el código.
+ Usar 100% IAM Roles con AWS Services.
+
+ Exponencital Backoff
+  - Falla por muchas llamadas continuas.
+  - rate limited API.
+  - Es exponencial por cada falla de llamada a la SDK. El doble que la anterior.
+MFA-Delete S3
+Se tiene que habilitar Version.
+The Bucket owner (root account) can enable/disable MFA
+MFA-Delete solo se puede hacer con la CLI.
+
+S3 Access logs
+Todos los accesos quedan
+Nunca poner en el mismo bucket el log de lo que voy a monitorear.
+HAce un loop y lo llena de datos.
+Los logs se pueden analizar con Athena.
+S3 Replication (CRR & SRR)
+Replicación Asincrónica - 
+Cross Region Replication (CRR)
+Same Region Replication (SRR)
+Buckets pueden estar en diferentes cuentas
+Se tiene que dar los permisos adecuado en IAM a S3
+
+CRR - Se usa por compliance, menor latencia para el acceso o entre cuentas
+SRR - Se usa para log aggregation, live replication.
+
+A partir de que se activa replica (nada de lo anterior)
+En las operaciones de DELETE:
+ - Si no tiene version ID, agraga una marca de borrado, no replica.
+ - El borrado no se replica. 
+No se pueden encadenar las replicas.
+
+S3 pre-signed URLs
+
+Can generate pre-signed URLs using SDK or CLI.
+Por defecto es válido por 3600 segundos se cambia con --expires-in (tiempo en segundos)
+Los usuarios con la pre-signed URL heredan los permisos de los usuarios que los crearon.
+
+S3 Storage Classes
+
+Saber cual usar para que
+- Amazon S3 Standard - General Purpose
+- Amazon S3 Standard-Infrequent Access (IA)
+- Amazon S3 One Zone-Infrequent Access
+- Intelligent Tiering
+- Glacier - Archive
+- Glacier Deep Archive
+
+Reduced Redundancy Storage (deprecado)
+
+- Amazon S3 Standard - General Purpose
+  High durability (99.9999999%) de los ojectos a través de múltiple AZ
+  99.99% de disponibilidad en un año.
+
+  Usado generalmente para: Big Data analytics, mobile & gaming, content distribution.
+
+- Standard-Infrequent Access (IA)
+  Son datos que son poco accedidos, pero requieren rápidos accesos cuando necesita.
+  High durability (99.9999999%) de los ojectos a través de múltiple AZ
+  99.99% de disponibilidad en un año.
+  Es más barato que S3 Standard.
+
+  Usado para: Data Store para disaster recovery, backups, etc.
+
+- One Zone-Infrequent Access
+  Igual que IA pero en una sola AZ.
+  99.5% de disponibilidad
+  Support SSL
+  Más barato que el IA.
+
+  Usado para: copia secundaria de backup, o datos que puedan ser recreados.
+
+- Intelligent Tiering
+  - Tiene la misma baja latencia que S3 Standard
+  - un costo un poco mayot por monitoreo y autotiering
+  - Mueve los objetos entre tiers basado en su acceso.
+  - Durability 99.999999999 y multi AZ
+  - 99.9 % de disponibilidad
+
+- Amazon Glacier
+ - Cold Archive para backup y archive.
+ - Retenida por 10 años el dato 
+ - Alternativo a Tape storage.
+ - Durability 99.999999999
+ - Costo por mes (0.004/GB) + retrieving cost.
+ - Cada item en Glacier se llama Archive y puede ser de hasta 40 TB.
+ - Archive se almacenan en Vault.
+
+Opciones de Glacier para traer el dato (retrivel):
+  - Expedited (1 a 5 minutos)
+  - Standard (3 a 5 horas)
+  - Bulk (5 a 12 horas)
+  - Mínimo 90 días.
+
+Amazon Glacier DeepArchive - Para long term storage:
+  - Standard (12 horas)
+  - Bulk (48 horas)
+  - Mínimo duración en el almacenamiento 180 días
 
