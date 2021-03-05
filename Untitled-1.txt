@@ -1,0 +1,39 @@
+Here are few links which will be useful to get the certification. They can also reach me in teams.
+
+ 
+
+Exam is getting tougher day by day when compared to last year, they changed pattern and all are scenario based.
+
+Find exam guides, required FAQs, sample questions, and other exam preparation resources. (Click relevant level certificate - Foundation / Associate / Professional / Specialty) https://aws.amazon.com/certification/certification-prep/
+
+ 
+
+Exam Readiness (web-free, go through twice)
+
+https://www.aws.training/Details/Curriculum?id=20685
+
+ 
+
+Training from Stephane Maarek (go through twice and make some flash cards/notes)
+
+Practice Tests from - Jon Bosco, Whiz, Nael Davis.
+
+ 
+
+Go through latest AWS whitepapers:
+
+https://aws.amazon.com/whitepapers/?whitepapers-main.sort-by=item.additionalFields.sortDate&whitepapers-main.sort-order=desc
+
+ 
+
+go through AWS re-invent videos
+
+https://reinvent.awsevents.com/
+
+ 
+
+Thanks.
+
+We recommend that you retake these practice exams until you consistently score 80% or higher.
+
+To access your FREE EXAM SIMULATOR, apply coupon udm3S11 at check-out: https://learn.digitalcloud.training/product/exam-simulator-aws-solutions-architect-associate?add-to-cart=23006&amp;quantity=1&amp;is_buy_now=1

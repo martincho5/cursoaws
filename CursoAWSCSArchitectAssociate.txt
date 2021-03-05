@@ -1070,3 +1070,1603 @@ Amazon Glacier DeepArchive - Para long term storage:
   - Bulk (48 horas)
   - Mínimo duración en el almacenamiento 180 días
 
+El Storage Class se pone cuando se sube un archivo.
+
+Las Local Zones no tiene AZ
+
+S3 - Moving between storage classes.
+
+Se puede transicionar objetos en storage classes.
+El movimiento de los objetos en forma automatiza se puede realizar con el lifecycle configuration.
+
+S3 Lifecycle rules
+ - Trasition actions:
+    - Move objects to Standard IA 60 days después de su creación.
+    - Move to Glacier para achiving
+ - Expiration actions:
+    - Access log files can be set to delete after 365
+    - Can be used to delete old version
+    - Can be used to dele incomplete multi-part uploads.
+ - Las reglas pueden ser creada para ciertos prefijos o por tags.
+ 
+ S3 - Baseline performance
+
+ Amazon S3 escala automática entre 100-200 ms
+ Podes tener 3500 (PUT/COPY/DELETE/POST) y 5500 GET/HEAD request per second per prefix in a bucket
+ Si esparcimos los read a través de los prefijos podemos tener 22000 request por segundo.
+ KMS Limitaciones
+  - SSE-KMS impactado por el KMS limit.
+  - KMS Quota per second (5500, 1000, 30000 req/s based on region)
+  - No se puede aumentar la Quota de Request en KMS
+Como obtimizar
+ - Multipar upload para acrhivos mayores a 100 MB.
+   - Paralelizar la subida.
+ - S3 Transfer Acceleration
+   - Incrementa la velocidad transfiriendo los archivos a una AWS Edge que reenvia al bucket de destino.
+   - Compatible con multipart upload.
+S3 bytes-Range Fetches
+ - Paraleliza los Gets para un rango especifico de bytes
+ - Más resilente en caso de falla.
+
+ Se puede usar para mejorar el download - Paraleliza el download.
+ Se puede usar para bajar una parte del archivo( el head del file) ejemplo los 16 bits iniciales.
+
+S3 Select & Glacier Select
+ -  devuelve menos datos usando SQL para un filtrado del lado del servidor.
+ - Podés filtrar por fila o columnas
+ - Menos transferencia en la red y menos costo de CPU del lado del cliente.
+   400% más rapido y 80% más barato.
+
+S3 Event Notifications.
+ - Se pueden crear reglas y generar cosas.
+ - SNS - Para enviar por SMS o email
+ - SQS - Para generar una cola
+ - Lambda Function - 
+ Se puedene crear S3 events as desired.
+ Si queremos que funcionen todas las notificaciones hay que habilitar el versionado del bucket.
+
+AWS Athena
+Serverless service para hacer analitycs directamente sobre S3 Files
+SQL language
+JDBC or ODBC driver / Se cobra por query y por cantidad de datos escaneados.
+Backend Presto.
+Como analizamos los datos directamente en S3 -> use Athena
+VPC Flow Logs, ELB Logs, CloudTrail trails, etc.
+
+S3 Object Lock & Glacier Vault
+ - S3 Object Lock
+   - Adopt a WORM Model (Write One Read Many)
+   - Block an object version deletion for a specific amount of time
+ - Glacier Vault Lock
+   - Adopt a WORM Model
+   - Lock the policy for future edits (no pude ser modificado)
+   - Sirve mucho para Para Compliance y data retention
+
+AWS CloudFront
+ - CDN
+ - Improves read performance, contenido cacheado.
+ - 216 puntos de presencia globales.
+ - DDoS protection, integrado con Shield, AWS Web App Firewall.
+ - Can expose external HTTPS and talk internal HTTPs backends.
+
+Origenes para usar CloudFront
+ - S3 Buckets
+   - Distribución files y cache en el Edge
+   - Mejora la seguridad con CloudFront Origin Access Identity
+   - Se puede usar para subir archivos a S3
+ - Custom Origin (HTTP)
+   - Application Load Balancer
+   - EC2 instance
+   - S3 website
+   - Any HTTP.
+ - S3 with Clodufront - Edge Location - OAI+S3 bucket policy y manda a un edge location.
+ - ALB or EC2 - Hay que permitir al EC2 todas la IPs publicas del Edge Location para obtener los files.
+   ALB - Allow Public IP of Edge Locations.
+ - CloudFront - Geo Restriction.
+   - Whitelist
+   - Blacklist
+ - CloudFront vs S3 Cross Region
+   - CloudFront - Global Edge Network, File Cached, Great for static content.
+   - S3 Cross Region Replication - Se debe poner en cada región que se quiere replicar, Se actualiza casi en tiempo real, Solo lectura. Para Dynamic content.
+
+ - CloudFront Signed URL/Signed Cookies
+  - Para distribuir contenido premium a usuarios en el mundo.
+  - Se puede usar CloudFront Signed URL/Cookie. Se adjunta una policy con:
+    - URL Expiration
+    - IP Ranges to access the data from
+    - Trusted Signers.
+  - Que tanto tiempo hacemos la URL válida:
+    - Shared Content (movies, music): hacerlo corto (unos pocos minutos)
+    - Private Content (privado al usuario): last for years
+  - Signed URL = access to individual file.
+  - Signed Cookies = access to many files and reusable.
+
+La aplicación autentica y con el AWS SDK genera la URL firmada y se la retorna al cliente.
+
+CloudFront Signed URL vs S3 Pre-Signed URL
+CloudFront
+ - Permite el acceso a un path, no importa el origen.
+ - Account wide key-pair, only the root can manage it
+ - Se puede filtrar por IP, Path, dia, expiracion
+ - Se puede dejar features cacheados.
+S3 
+ - Issue a request as the person who pre-signed the URL.
+ - Uses the IAM key of the signing IAM principal.
+ - Limited Lifetime
+
+AWS Global Accelerator.
+ - Unicast IP vs Anycast IP
+   - AnyCast IP: all servers hold the same IP address and the client is routed to the nearest one.
+ - Usa AnyCast IP AWS Global Accelerator.
+  - Leverage the AWS Internal network to route to your application.
+  - 2 AnyCast IP are created for your application.
+  - The AnyCast IP send traffic directly to Edge Locations.
+  - The Edge locations send the traffic to your application.
+ - Trabaja con ElastiC IP, EC2, ALB, NLB, public or private.
+ - Performance Consistente.
+    - Busca en forma inteligente la región más adecuada con menor latencia.
+    - Sin problemas de cache del cliente porque es la misma IP.
+    - Interno en la red de AWS
+ - Health Checks
+   - Realiza checks sobre la aplicación.
+   - Hace que la aplicación global (failover en menos de 1 minuto si es unheltly)
+   - Muy bueno para Disaster Recovery.
+ - Seguridad
+   - 2 IP externas para tener en el whitelist.
+   - DDoS protection por AWS Shield
+
+Diferencias en AWS Global Accelerator vs CloudFront.
+ - Ambos usan edge location.
+ - Ambos integran AWS Shield for DDoS
+
+ CloudFront
+  - Mejora la performance por ambos tipos de contenidos (como imágnes y videos)
+  - Contenido Dinámico
+  - Contenido is served at the edge.
+ Global Accelerator
+  - Mejora la performance en una gran cantidad de aplicaciones sobre TCP o UDP
+  - Proxying packets en el Edge hasta la aplicación corriendo en más de una región de AWS.
+  - Good for non-http use case, como gaming (UDP), IoT o IP Voice.
+  - Good for HTTP que requiere IP estática, fast regional failover.
+
+Snowball
+ - Physical data transport solution that helps mvoign TB or PB of data ori out of AWS.
+ - Secure, Tamper resistan, uses KMS 256 bit encription.
+ - Tracking using SNS and text messages.
+ - Pay per data transfer job.
+ - Se usa para grande cantidades de datos a migrar a la nube, disaster recovery
+Proceso:
+ 1. Se pide el Snowball
+ 2. Instalar un cliente de Snowball a los servidores.
+ 3. Connect snowball a los servidores y copiar con el cliente.
+ 4. Enviar de vuelta a Amazon.
+ 5. Los datos son cargados en un S3 bucket.
+ 6. Snowball se borra
+ 7. El tracking se hace usando SNS, Text message y la consola de AWS.
+Si es a 10Gbit/s si lo hacés por internet.
+
+Snowball Edge
+ - Agrega capacidad de computo al dispositibo.
+ - 100 TB de capacidad con - Storage Optimization (24 vCPU) y Computo optimizado 52vCPU-
+ - Soporta EC2 AMI customizada para hacer en proceso on the go.
+ - Soporta funciones de Lambda.
+ - Muy útil si queremos pre-procesar los datos mientras se mueven.
+ - data migration, IO Capture, Machine Learning,
+
+AWS Snowmobile
+ - Transfiere exabytes de datos (1 EB = 1000 PB = 1000000 TBs)
+ - Cada Snowmobile tiene 100 PB de capacidad.
+ - Mejor que el Snowball si transferimos más de 10 PB de información.
+
+Snowball into Glacier
+ - No se pued importar directo de Snowball a Glacier.
+ - Primero S3 y luego S3 lifecycle policy.
+
+Storage Gateway
+Hybrid Cloud for Storage
+ - S3 es una tecnología propietaria.
+AWS Storage Cloud Native Optimization.
+Block - EBS, EC2
+FILE - Amazon EFS
+OBJECT - S3 Glacier
+
+Se usa para disaster recovery, backup & restore y tiered storage.
+3 tipos de Storage Gateway (hay que saber la diferencia entre los 3)
+ - File Gateway 
+ - Volume Gateway
+ - Tape Gateway 
+
+File Gateway
+ - Configured S3 buckets accesible por NFS o SMB.
+ - Soporta S3 Standard, S3 IA, S3 One Zone IA.
+ - Acceso por IAM por cada file Gateway
+ - Los datos recién usados están cacheado en el file Gateway.
+ - Puede ser montado en varios servidores.
+
+Volume Gateway
+ - Block stroge usando iSCSI by S3
+ - Backupeados por EBS Snapshots para restaurar on premise volumes.
+ - Cached Volumes - Baja latencia para acceder a los datos más recientes.
+ - Stored volumes - Un dataset entero On-Premise, scheduleados lo backups a S3.
+
+Tape Gateway
+ - Son VTLs backupeadas en Amazon S3 y Glacier.
+ - Se backupea los datos usando procesos existentes de tape.
+ - Trabaja con los backups lideres.
+
+Si dice File / NFS
+Si es Volume / iSCSI - Blocks.
+Si es Backup - Tape Gateway
+
+Storage Gateway Hardware appliance se puede comprar.
+Sirve para backups diarios de NFS en pequeños datacenters.
+
+Amazon FSx for Winwdows (File Server)
+FSx for Widnows es un share de windows.
+Soporta SMB y NTFS.
+Integrado con AD, ACL, user Quotas
+Build on SSD, escalable hasta 10s of GB/s, millones de IOPs
+Accesible desde On-Premise
+Se puede configurar en Multiples AZ para alta disponibilidad
+Los datos son backupeados en forma diaria en S3.
+
+Amazon FSx for Lustre
+ - Lustre es un tipo de file system distribuido, para computación de alta capacidad.
+ - El nombre Lustre, viene de Linux y Cluster.
+ - Machine Learning, HPC.
+ - Video processing, electronic design
+ - sub-ms latencia
+ - Seamless integration con s3
+    - Puede leer S3 como un file system a través de FSx.
+    - Write en S3
+ - Puede usarse en OnPremise.
+
+Storage Comparison
+S3: Object Storage.
+Glacier: Object Archival.
+EFS: NFS for Linux, POSIX
+FSx for Windows: SMB de Windows.
+FSx for Lustre: HPC para Linux  
+EBS Volumes: Almacenieminto de red para 1 EC2 instance. En un AZ.
+Instance Storage: Almacenamiento físico a mi EC2 instance (high IOPS)
+Storage Gateway: File Gateway, Volume Gateway, Tape Gateway
+Snowball/Snowmobile: move large amoun of data.
+Database: para Workloads especificos. 
+
+-------------------------
+-------------------------
+AWS Integration & Messaging.
+
+- 2 patrones en las comunicaciones de las aplicaciones:
+  - comunicacion sincronica - App to app
+  - Comunicación Asincrónica/Event Based - App to queue to app.
+
+El sincronismo en la aplicaciones puede ser problemático si hay picos de tráfico.
+En estos casos es mejor desacoplar (decouple) las aplicaciones con:
+  - SQS - Queue Model
+  - SNS - pub/sub Model
+  - Kinesis - realtime streaming model (Big data)
+
+Amazon SQS
+
+Poducer genera los mensajes hacia la SQS Queue y los consumidores bajan los mensajes y los procesa y borra de la Queue.
+Es un buffer entre el Producer y Consumer.
+Standard Queue
+ - Tiene 10 años
+ - Fully Managed Service y se usa para decouple applications.
+ - Atributos
+   - unlimited Thoughput, unlimited messages in the queue.
+   - Por defecto, el mensaje está por 4 días con un máximo de 14 días.
+   - Baja latencia (menos de 10 ms para recibir o publicar)
+   - Limite máximo del mensaje 256 KB por mensaje.
+   - Se puede tener mensajes duplicados.
+   - Puede tener mensajes desordenados (tiene un best effort ordering)
+
+SQS - Producing messages
+ - Produced to SQS usando el SDK (SendMessage API)
+ - El mensaje permanece hasta que el consumer lo borra.
+
+ Ejemplo: Enviar y una orden para ser procesado
+  - Order id
+  - Customer id
+  - Cualquier atributo que uno quiera. 
+
+SQS - Consuming messages
+ - Consumers (running on EC2, servers on premise o AWS Lambda)
+ - Poll SQS for messages (recibe de a 10 mensajes por vez)
+ - Procesa el mensaje (Ej: )
+ - Delete the message usando la DeleteMessage API.
+
+SQS - Multiple EC2 instance Consumers.
+ - Cada Consumidor recibe y procesa los mensajes en paralelo.
+ - Borra una vez procesado.
+ - At least one delivery.
+ - Podemos scalar horizontalmente si necesitamos más.
+
+SQS with Auto Scaling Group (ASG)
+ - La métrica de CloudWatch - Queue Length (ApproximateNumbreofMessages)
+   Se genera un alarma y scala el ASG.
+
+SQS to decouple entre aplicaciones.
+
+ - Aplicaciones que procesa videos divdida en 2.
+
+Amazon SQS - Security
+ - Encripción
+   - In-fligth - HTTPs API
+   - at-rest usando KMS
+   - Clien-side encription
+ - Access Controls: IAM policies to regulate access to SQS API.
+ - SQS Access Policies (similar to S3 bucket policies)
+  - Cross acount access
+  - Permitir a otros servicios escribie en la SQS Queue
+
+SQS - Message Visibility Timeout
+ - Cuando un mesaje es tomado por un consumidor, se vuelve invisible para los otros consumidores.
+ - El Visibility timeout es 30 segundos por defecto.
+ - Es decir tiene 30 segundos para ser procesado.
+ Ojo que se puede procesar 2 veces.
+ - Si necesita más tiempo para procesar, utiliza la API call ChangeMessageVisibility para obtener más tiempo.
+
+SQS - Dead Letter Queue
+ - Cuando un consumidor falla, el mensaje vuelve.
+ - Si pasa muy seguido, debe haber algo raro en el mensaje.
+ - Se puede poner un Loop y poner un máximo.
+ - Después de superar el MaximumReceives threshold excede. El mesnaje va a una Dead Letter Queue (DLQ)
+ - Es para debugging ... la DLQ 
+ - DLQ expira en 14 días.
+
+SQS - Delay Queue
+ - Delay message hasta 15 minutos 
+ - Default 0
+ - Se puede hacer override the default on send using the DelaySeconds parameter.
+
+SQS - Fifo Queue
+ - Los mensajes son ordenados, los primero que entran, son los primero que salen.
+ First in, First Out.
+ - Limitado para 300 msg/s sin batching y 3000 msg/s con batch,
+ - Remove duplicates.
+ - Mensajes procesados en orden.
+
+SQS with Auto Scaling Group
+ - La métrica es - CloudWatch Custom Metric / Queue Length - Number of instances.
+   Generamos la alarma Y esa alarma va al AutoScalling Group.
+ - Cuando ir Up or down.
+ Hay que crear una custom metric.
+ 
+AMAZON SNS
+
+Mandar un mensaje y tener muchos recievers.
+Pub/Sub (Publish - Subscribe)
+ - El "event producer" manda 1 solo mensaje a un SNS topic
+ - Y manda a los "event recievers" (subscription) que escuchar el SNS topic notification.
+ - Cada subscriber 
+ - Puede tener 10.000.000 subscriptions per topic.
+ - 100.000 topics limit
+ - Los subscribers puede ser:
+    - SQS
+    - HTTP/HTTPS
+    - Lambda
+    - Emails
+    - SMS messages
+    - Mobile Notifications
+ SNS integrado con muchos Servicios de AWS
+  - CloudWatch
+  - Auto Scaling Groups
+  - Amazon S3 (buckets events)
+  - CloudFormation
+  - Etc.
+Topic Publish (using the SDK)
+ - Create topic
+ - Create a subscription
+ - Publish to the topic
+Direct Publish (para mobile apps)
+ - Create a platform application
+ - Create a platform endpoint
+ - Publish to the platform endpoint
+ - Works with Google GCM, Apple APNS, Amazon ADM...
+SNS - security
+ - Encripción
+   - In-fligth - HTTPs API
+   - at-rest usando KMS
+   - Clien-side encription
+ - Access Controls: IAM policies to regulate access to SQS API.
+ - SNS Access Policies (similar to S3 bucket policies)
+  - Cross acount access
+  - Permitir a otros servicios escribie en la SNS Topic
+
+SNS + SQS:Fan Out
+ - Push once to SNS, receive in all SQS queues that are subscribers.
+ - Full decoupled, no data loss.
+ - SQS allows for: data persistence, delayin processing and work retries.
+ - Agregar más SQS en el tiempo
+ - Estar seguro que los SQS queue access policy permite a los SNS escribir.
+ LIMItacion - SNS no pueden enviar mensajes a una queue FIFO.
+ - Aplicaciones: S3 events to multiple queues.
+   - Combinaciones de tipo de evento y prefix se puede tener un solo event rule.
+   - Si queremos mandar el mismo S3 event a varios SQS, usamos Fan Out
+
+AWS Kinesis
+ - Kinesis is a managed alternative to Apache Kafka.
+ - Great para logs, metrics, IoT, clickstrea, Real time Big data.
+ - Great para streaming processing framework (Spark, NiFi, etc.)
+ - Los datos son replicados automáticamente en 3 AZ.
+ 3 Productos
+
+ - Kinesis Streams:low latency streaming ingest at Scale
+ - Kinesis analytics: perform real-time analytics on streams using SQL.
+ - Kinesis Firehose: load streams into S3, Redshift, ElasticSearch ...
+
+Kinesis Streams
+ - Streams están divididos en Shards/Particiones.
+   Se agrandan los shards para tener más paralelismo.
+ - Data retention is 1 day by default, can go up to 7 days.
+ - Ability to reprocess/reply data
+ - Multiple app consume same stream.
+ - Procesamiento en tiempo real
+ - Una vez que los datos están insertados en Kinesis, no se pueden borrar (no es un db - inmatubilidad)
+Kinesis Stream Shards
+ - 1 Stream está compuesto por muchos shards 
+ - 1 MB/s o 1000 mensajes para escribir por shard
+ - 2 MB/s para leer por shard
+ - Se paga por cantidad de shard aprovisionados.
+ - Batching available or per messsage calls.
+ - La cantidad de shards pueden evolucionar a través del tiempo (reshard/merge)
+ - Los registros están ordenados por shard
+AWS Kinesis API - Put records
+ - PutRecord API + Partition key that gets hashed.
+   Key is hashed to determine shard id.
+ - Same key to same partition
+ - Message sent get a "sequence number"
+ - Hay que elegir partition key que estén bien distribuidas.
+    - user_id if many users (muy común)
+    - Not country_id 90% of the users are in one country
+ - Use Batching with PutRecords to reduce costs and increase throughput
+ - ProvisionedThroughputExceeded if we go over the limits.
+ - Can use CLI, AWS SDK, or producer libraries from various frameworks.
+AWS Kinesis API - Exceptions
+ - ProvisionedThroughputExceeded Exceptions
+   - Cuando mandamos más datos que los soportados.
+   - Verifiquemos que no tengamos un hot shard (tenemos mal el partition key - poco distrubuido)
+ - Solution:
+   - Retries with Backoff
+   - Incrementar los Shards
+   - Ver si el partition key está bien.
+AWS Kinesis API - Consumers
+ - Se puede usar un consumer normal (CLI, SDK, etc)
+ - Se puede usar el Kinesis Client Library (Java, Node, python, ruby,.net)
+   - KCL usa DynamoDB to checkpoint offsets.
+   - KCL usa DynamoDB to track other workers y compartir el trabajo a través de los shards.
+Kinesis Security
+ - Control de acceso y autorización usando IAM policies.
+ - Encripción on the flight usando HTTPS endpoints.
+ - Encripción at rest usando KMS.
+ - Posibilidad de encriptar/desencriptar datos en el lado del cliente (harder)
+ - VPC Endpoints disponibles para Kinesis para acceder en un VPC.
+
+AWS Kinesis Data Firehose
+ - Servicio totalmente adminsitrado, automatizado el escalamiento, Serverless
+ - Carga datos en Redshift / Amazon S3 / ElasticSearch / Splunk
+ - Near Real Time
+   - 60 segundos de latencia
+   - o 32 MB mínimo de datos
+ - Soportas muchos formatos de datos, conversiones, transformaciones, compresiones.
+ - Se paga por la cantidad de datos que va a través de Firehose.
+Kinesis Data Firehose Diagram
+Le pueden manda SDK (KPL), Kinesis Agent, Kinesis Data Streams, CloudWatch Logs y Eventos.
+ - Se puede usar Lambda para transformar los datos 
+ - Se manda a Amazon S3, Redshift, Elastic, Splunk
+Kinesis Data Stream vs Firehose
+ - Streams
+    - Para cuando creamos nuestro código customizado (producer/consumer)
+    - Real time (200ms)
+    - Se de Administrar el escalamiento (splittin)
+    - Data Store de 1 a 7 días, replay capability, multi consumers.
+ - Firehose
+    - Totalmente adminsitrado, envía a S3, Splunk, Redshift, ElasticSearch
+    - Serverless data transformation con Lambda.
+    - Near real time 
+    - Escalamiento automático
+    - No se almacena datos
+
+Kinesis Data Analytics.
+ - Se hacen analitica en tiempo real sobre los Kinesis Streams usando SQL.
+ - Es autoescalable, Adminsitrado y Continuous en tiempo real.
+ - Se paga por el consumo.
+ - Se pueden crear streams out de los queries en tiempo real.
+
+Orden de los datos en Kinesis 
+ - Una vez asignado con el hash del partition key va siempre al mismo shard. No balancea completamente entre shards.
+Orden de los datos en SQS
+ - SQS Strandard, sin orden.
+ - SQS Fifo, Si no ponemos Group ID, los mensajes los mensajes son ordenados como son enviados, con 1 solo consumer.
+ - Queremos escalar la cantidad de consumidores pero queremos agruparlos los que están relacionados.
+   Entonces se usa el Group ID similar a Partition Key de Kinesis.
+   Consumidores se agranda.
+Kinesis vs SQS ordering
+ - Si son 100 camiones, 5 kinesis shard, 1 SQS FIFO
+   - Kinesis Data Streams:
+      - En promedio vamos a tener 20 camiones por shard.
+      - Los datos ordenados en cada shard
+      - La cantidad máxima de consumidores en paralelo es 5.
+      - Se puede recibir hasta 5Mb/s de datos.
+   - SQS FIFO
+      - Solo tenés un SQS FIFO
+      - 100 Group ID y se pueden tener hasta 100 consumidores.
+      - tenes hasta 300 mensajes por segundo (o 3000 si se usa batching)
+  SQS vs SNS vs Kinesis
+   - SQS 
+      - Consumidores "pull data"
+      - Los datos son borrados una vez consumidos.
+      - Se pueden tener tantos consumidores como se quiera
+      - No es necesario aporvisionar throughput
+      - No tiene un orden garantizado (excepto FIFO)
+      - Delay individual por mensaje.
+   - SNS
+      - Envia datos a muchos subscribers.
+      - hasta 10.000.000 de subscriptores.
+      - El dato no es persistente.
+      - pub/sub
+      - hasta 100.000 topicos.
+      - No es necesario aporvisionar throughput
+      - Integra con SQS para fan-out architecture.
+   - Kinesis
+      - Consumidores "pull data"
+      - Consumidores los que quieras
+      - Posibilidad de reply data
+      - Para real time big data, analytics y ETLs
+      - Ordenados a nivel de Shards.
+      - El dato expira en X días
+      - Debe provisionarse el throughput
+Amazon MQ
+ - SQS, SNS son CloudNative
+ - Aplicaciones tradicionales usan protocolos abiertos: MQTT, AMQSP,STOMP,Openwire,WSS.
+ - Amazon MQ = managed Apache ActiveMQ
+ - Amazon MQ no escala tanto como SQS/SNS
+ - Corre en una máquina dedicada, puede están en HA.
+ - Amazon MQ tieen ambos, queue feature (SQS) adn topic features(SNS)
+
+Serverless
+ - Inicialmente Serverless == FaaS (Function as a Service)
+ - Serverless no quiere decir que no hay servidores, sino que no son administrados/provisionnados por nosotros.
+Serveless en AWS
+ - AWS Lambda
+ - DynamoDB
+ - AWS Cognito
+ - AWS API Gateway
+ - Amazon S3
+ - AWS SNS & SQS
+ - AWS Kinesis Data Firehose
+ - Aurora Serverless
+ - Step functions
+ - Fargate
+
+AWS Lambda
+ - Virtual functions.
+ - Limitado por el tiempo - pequeñas ejecuciones.
+ - Corre on-demand
+ - Scaling is automated.
+Beneficios de AWS Lambda
+ - Precio sencillo
+    - Se paga por request y tiempo de computo.
+    - Free Tier 1000000 de Request y 400000 GBs de computo.
+ - Integrado con varios servicios de AWS.
+ - Integrado con varios lenguajes de programación
+ - Facil de monitorear con AWS CloudWatch
+ - Facil de obtener más recursos por función (hasta 3 GB de RAM por función)
+ - Si incrementamos RAM, también CPU.
+
+AWS Lambda language support
+ - Node.js
+ - python
+ - Java (Java 8 comp)
+ - C#, Golang, Powershell, Ruby, Custom runtime API.
+ 
+ - Docker no es soportado por Lambda
+
+AWS Lambda integration.
+ API Gateway, Kinesis, DynamoDB, S3, CloudFront, CloudWatch Events, Logs, SNS, SQS, Cognito.
+
+ClodWathEvents -
+
+https://us-east-2.console.aws.amazon.com/lambda/home?region=us-east-2#/begin
+
+Lambda Limits per Region
+ - Execution:
+    - Memory Allocation: 128 Mb - 3008 MB (64 increment)
+    - Maximum execution time: 900 seg. (15 minutos)
+    - Enviroment Variables: 4 KB
+    - Disk capacity in the "function container" (in /tmp): 512 MB
+    - Concurrency execution: 1000 (puede incrementarse)
+ - Deployment:
+    - Lambda function Deployment size (Compress .zip): 50 MB
+    - Size of uncompress Deployment (code + dependecies): 250 MB
+    - Can use the /tmp to load other files for starup
+    - Size of enviroment variables: 4KB
+Lambda@Edge
+ - Deploy Lambda functions alongside your CloudFront CDN.
+   - Build more response applications.
+ - Se puede usar lambda para cambiar los siguientes requests y responds en CloudFront
+   - After CloudFront receive a request from a viewer (Viewer request)
+   - Before CloudFront forwards the request to the origin (origin request)
+   - After CloudFront receives the response from the origin (origin response)
+   - Before CloudFront forward the response to the viewer (viewer response)
+ - Use Cases:
+   - Website security and privacy
+   - Dynamic web app at the Edge
+   - Session
+   - Intelligently route across origins and data centers.
+   - Bot Mitigation at the edge
+   - Real-time image transformation
+   - A/B Testing
+   - User Authentication and Authorization
+   - USer Priorization
+   - User Tracking and analytics.
+
+DynamoDB
+ - Fully Managed, Hihly available con replicación en 3 AZ.
+ - NoSQL Database - not a relational database
+ - Scale to massive workloads, distributed database.
+ - Milliones de Request
+ - Integrado con IAM for security, Authorization and administration.
+ - Enable event driven programming with DynamoDB
+ - Low cost and auto AutoScalling
+
+DynamoDB - Basics
+ - DynamoDB is made of tables.
+ - Each table has a primary key
+ - Each table can have a infinite number of items (=rows)
+ - Each item has attributes 
+ - Maximum size of a itme is 400 KB
+ - Data type supported are:
+   - Scalar Types: String, Number, Binay, Boolean, Null
+   - DocumentTyoos: List, map
+   - Set Types: String Set, Number Set, Binary Set.
+ DynamoDB - Provisioned Throughput
+  - Table must have provisioned read and write capacity Units
+  - Read Capacity Units (RCU): throughput per read (0,00013 por RCU)
+    - 1 RCU = 1 strongly consistent read of 4 KB per seconds.
+    - 1 RCU = 2 eventually consistent read of 4 KB per seconds.
+  - Write Capacity Units (WCU): throughput per write (0,00065 por WCU)
+    - 1 WCU = 1 write of 1 KB per second.
+  - Option to setup auto-scalling of throughput to meet demand.
+  - Throughput can be exceeded temporarly using "burst credits"
+  - if burst credit ara empty, you'll get a "ProvisionedThroughputException".
+  - It's the advised to do an exponential back-off retry.
+DynamoDB - DAX
+  - DAX = DynamoDB Accelerator
+  - Seamless cache for DynamoDB, no application re-write
+  - Writes go through DAX to DynamoDB
+  - Micro second latency for cached read & queries.
+  - Solves the Hot Key problem
+  - 5 minutes TTL for cache by default.
+  - Hasta 10 nodos en un cluster.
+  - Multi Az (3 nodos mínimo recomendado para producción)
+  - Seguro (Encryption at rest with KMS, VPC, IAM, CloudTrail)
+DynamoDB Streams
+  - Changes in DynamoDB can end up in a DynamoDB Stream.
+  - This stream can be read by AWS Lambda, and we can then do:
+      - React to chages in real time
+      - Analytics
+      - Create derivative tables / views
+      - Insert into ElasticSearch
+  - Could implement cross region replication usin streams.
+  - Stream has 24 hours of data retention.
+DynamoDB - New Features
+  - Transactions (New from Nov 2018)
+    - All or nothing type of operations.
+    - Coordinate insert, update & delete multiple talbes.
+    - Include up to 10 unique items or 4 MB de datos.
+  - On Demand 
+    - No capacity planning need (WCU/RCU)
+    - 2.5x more expensive.
+    - With spikes are un-predictable o aplicaciones con muy bajo throughput
+DynamoDB - Security & Other Features.
+ - Security
+    - VPC Endpoints available to access DynamoDB
+    - Access fully controlled by IAM
+    - Encryption at rest using KMS /in transit SSL/TLS
+ - Backup y Restore 
+    - Point in time restore like RDS
+    - No performance impact.
+ - Amazon DMS can be use to migrate to DynamoDB (from Mongo, Oracle, MySQl, S3, etc)
+ - You can launch a local DynamoDB on your computer for development purpose.
+ - Global tables (cross Regions)
+    - Multi region, fully replicated, high performance
+    - Active Active replication, many regions.
+    - Must Enable DynamoDB Streams
+    - Useful for low latency, DR purpose.
+ - Capacity planning
+    - Planned Capacity
+    - On-Demand capacity: get unlimited WCU & RCU, more expensive.
+-------
+AWS API Gateway
+ - AWS Lambda + API Gateway
+ - Support for the WebSocket protocol
+ - Handle API versioning
+ - Handle different evnironments (Dev,Test,Prod)
+ - Handle Security (Authentication and Authorization)
+ - Create API Keys, handle request throttling
+ - Swagger / Open API import to quickly define APIs.
+ - Transform and validate requests and responses
+ - Generate SDK and API specifications
+ - Cache API responses
+
+API Gateway - Integration High Level
+ - Lambda Function
+   - Invoke Lambda functions
+   - Easy way to expose REST API backend by AWS Lambda
+ - HTTP
+   - Expose HTTP endpoints in the backend
+   - Add rate limiting, caching, user Authentication, API Keys, etc.
+ - AWS Service
+   - Expose any AWS API through the API Gateway.
+   - Add Authentication, deploy pulbicly, rate control
+API Gateway - Endpoint Types (3 forma de deploy)
+ - Edge-Optimized (default): For global clients.
+   - Request are routed a través del Cloudfront Edge Locations.
+   - The API Gateway still lives in only one region.
+ - Regional
+   - Para clientes en la misma región.
+   - Could manually combine with CloudFront (más control del caching y distribution)
+ - Private
+   - Can onlu be accessed from your VPC using a VPC endpoint 
+   - Use resource policy to define access.
+API Gateway - Security
+IAM Permissions
+ - Create an IAM policy Authorization and attach to User/role
+ - API Gateway verifies IAM permission passed by the calling application
+ - Good to provide access with your own infra.
+ - Leverages "Sig v4" capacity where IAM credentcial are in headers.
+
+Lambda Authorizer (formely Custom Authorizers)
+ - Uses AWS Lambda to validate the token in header being passed.
+ - Option to cache result of Authentication
+ - Helps to use OAuth/SAML/3er party type of Authentication
+ - Lambda must return an IAM policy for the user.
+
+Cognito User pools
+ - Cognito fully manages user lifecycle.
+ - API Gateway verifies Identity Automatically from AWS Cognito
+ - No custom implementation required
+ - Cognito only helps with Authentication, not Authorization.
+
+API Gateway - Security - Summary
+ - IAM: 
+    - Genial para usarios y roles que ya están con las AWS account.
+    - Maneja Authentication y Authorization
+    - Leverages Sig v4
+ - Custom Authorizer:
+    - Genial para 3rd party token.
+    - Muy flexible con respecto a IAM policy
+    - Maneja Authentication y Authorization
+    - Se paga por Lambda invocation.
+ - Cognito User Pool;
+    - Manejar tu propio user pool.
+    - No hay necesidad de escribir custom code.
+    - Se debe implementar Authorization en el backend.
+
+AWS Cognito
+ - Cognito User Pools:
+    - Sign in functionality for app users
+    - integrate with API Gateway
+ - Cognito Identity Pools (Federated Identity)
+    - Provide AWS Credentials to users para acceder a los AWS Resouces.
+    - Integrate with Cognito User Pool as an Identity provider.
+ - Cognito Sync
+    - Sunc data form device to Cognito.
+    - May be deprecated adn replaced with app Sync
+AWS Cognito User Pool (CUP)
+ - Create a serverless database o users for your mobile apps
+ - Simple login: Username / password
+ - Posibilidad de verificar mail, phone number, y agregar MFA
+ - Can enable Federated Identities (Facebook, Google, SAML, ..)
+ - Send back a JSON web Tokens
+ - Can be integrated with API Gateway
+
+AWS Cognito -Federated Identity Pools
+ - Login con una federaed Identity provaider or anonymous
+ - Get temporary AWS credentials back from Federated Identity Pool.
+ - Thes credentials com with a pre-defined IAM policy statin their premissions.
+   - Ideal para acceso temporario.
+AWS Cognito Sync - Deprecated - use AWS AppSync.
+
+AWS SAM - Serverless Application Model
+- Framework de desarrollo y deploy de aplicacione serverless.
+- Todas las configuraciones en YAML.
+- SAM puede usar CodeDeploy para deployar Lambda functions.
+- SAM puede correr lambda, DynamoDB, api Gateway locally
+
+########################################
+Bases de Datos en AWS
+########################################
+Preguntas para elegir una base de datos:
+ - Muchas Lecturas, Mucha escritura, o balanceado? Throughput necesario? Cambia el throughput, es necesario escalo o fluctua en el día?
+ - Cuando son los datos a guardar y por cuanto tiempo? Va a crecer? Tamaño de objeto promedio? Como son accedidos?
+ - Data Durabilitiy? Source of truth for the data?
+ - Latencia requerida? Usuarios concurrentes?
+ - Modelo de Datos? Como se va queriar el dato? Join? Structurado? Semi-estructurado?
+ - Strong schema? Más flexible? Repoting? Search? RDMS, NoSQl?
+ - Costo de licencia? Switch to Cloud native DB such as Aurora?
+-----------------------
+Database Types
+ - RDBMS (=SQL/OLTP): RDS, Aurora - great for joins
+ - NoSQL Database: DynamoDB (JSON), ElastiCache(key/value pairs), Neptune (graphs) -no joins, No SQL
+ - Object Storage: S3 (for big object) / Glacier (for backup/archive)
+ - Data Warehouse (=SQL Analytics/BI): Redshift (OLAP), Athena
+ - Search: ElasticSearch (JSON) - free text, unstructured searches
+ - Graphs: Neptune - dispplays relationships between data.
+-----------------------
+RDS
+ - Managed Postgres, MySQL, Oracle, MS SQL
+ - Must Provison EC2 instance & EBS volume Types.
+ - Read replica and multi AZ
+ - Security IAM, Security Group, KMS, SSL
+ - Backup / Snapshot / Point in time restore.
+ - Manage and Scheduled maintenance
+ - Monitoreo con CloudWatch
+
+ Casos de Uso: RDBMS/OLTP, perform SQL queries, transactions insert/delete/update
+  5 Pilares:
+  - Operations: small downtime when failover happends, when mantienance happends, escalar en replicas de lecturas implica intervención manual, cambios en la aplicación
+  - Security: AWS responsable del OS, Nosotros de KMS, security groups, IAM policies, authorizing users in DB, using SSL
+  - Reliability: Multi AZ feature, failover in case of failure.
+  - Performance: Depende de la instancia de EC2, tipo de EBS, la habilidad para agregar replicas de lectura. No auto escala.
+  - Cost: Paga por hora basado en la provición de EC2 e EBS
+
+Aurora
+ - Operations: less operations, auto scaling storage
+ - Security: AWS responsable del OS, Nosotros de KMS, security groups, IAM policies, authorizing users in DB, using SSL
+ - Reliability: Multi AZ, high available, possibly more than RDS, Aurora serverless option.
+ - Performance: 5x performance (según AWS) por su arquitectura optimizada. Hasta 15 replicas de lectura (solo 5 para RDS)
+ - Cost: Pay per hour based on EC2 and storage usage. Puede ser más barato que enterprise grad Oracle.
+
+ElastiCache
+ - Caso de uso: Key/Value store, frequent read, less write, cache results for DB queries, store session data for websites, cannot use SQL.
+ - Operations: same as RDS
+ - Security: AWS responsable del OS, Nosotros de KMS, security groups, IAM policies, users (Redis Auth), using SSL
+ - Reliability: Multi AZ, Clustering
+ - Performance: sub-milisecond performance, in memory, read replica for sharding, very popular cache option.
+ - Cost: Pay per hour based on EC2 and storage usage.
+
+DynamoDB
+ - Caso de uso: Para aplicaciones Serverless (pequeños documentos 100s KB), distributed serverless cache, No tiene SQL query language, tiene capacidad de transacciones.
+ - Operations: no operations needed, auto scaling capability, serverless.
+ - Security: full security through IAM Policies, KMS encription, SSL in flight
+ - Reliability: Multi AZ, Backups
+ - Performance: single digit millisecond performance, DAX for caching reads, performance doesn't degrade if your application scales.
+ - Cost: Pay per provisioned capaccity and storage usage (no need to guess in advance any capacity - can use autoscaling).
+
+S3
+ - Caso de uso: archivos estáticos, key value store para grandes archivos, hosting de Webs.
+ - Operations: no operations needed
+ - Security: IAM, Bucket Policies, ACL, Encryption (Server/Client), SSL
+ - Reliability: 99.999999999% durability / 99.99% availability, Multi AZ, CRR
+ - Performance: scales to thousands of read / writes per second, transfer acceleration / multi-part for big files
+ - Cost: pay per storage usage, network cost, requests number
+
+Athena
+ - Caso de uso: archivos estáticos, key value store para grandes archivos, hosting de Webs.
+ - Operations: no operations needed, serverless
+ - Security: IAM + S3 security
+ - Reliability: managed service, uses Presto engine, highly available
+ - Performance: queries scale based on data size
+ - Cost: pay per query / per TB of data scanned, serverless
+
+Redshift
+ - Es OLAP - online analytical processing (analytics and data Warehouse)
+ - Caso de uso: Para Analytics/BI/Datawarehousing.
+ - Operations: similar to RDS
+ - Security: IAM, VPC, KMS, SSL (similar to RDS)
+ - Reliability: highly available, auto healing features
+ - Performance: 10x performance vs other data warehousing, compression
+ - Cost: pay per node provisioned, 1/10th of the cost vs other warehous
+
+Neptune - Graph database
+ - Caso de uso: Social Networking, High relationship data.
+ - Operations: similar to RDS
+ - Security: IAM, VPC, KMS, SSL (similar to RDS) + IAM Authentication
+ - Reliability: Multi-AZ, clustering
+ - Performance: best suited for graphs, clustering to improve performance
+ - Cost: pay per node provisioned (similar to RDS)
+
+ElasticSearch
+ - Seach any field, even partially matches. For Search or indexing.
+ - Operations: similar to RDS
+ - Security: Cognito, IAM, VPC, KMS, SSL
+ - Reliability: Multi-AZ, clustering
+ - Performance: based on ElasticSearch project (open source), petabyte scale
+ - Cost: pay per node provisioned (similar to RDS)
+
+---------------------------------
+#################################
+Monitoring AWS
+#################################
+---------------------------------
+AWS CloudWatch Metric
+ - CloudWatch provides metrics de todos los servicios en AWS.
+ - Metric es la variable a monitorear (CPU utilizaction, NetworkIn, ...)
+ - Las Metricas pertenece a un namespaces
+ - Dimension es un atributo de la métrica (instance id, enviroment, etc.)
+ - Hasta 10 dimensiones por metric
+ - Metrics tiene timestamps
+ - Se pueden crear Dashboard con metricas.
+
+AWS CloudWatch EC2 Detailed Monitoring
+ - EC2 por defecto cada 5 minutos
+ - Con detailed monitoring (por un costo mayor) se tienen todos los datos cada 1 minuto
+ - Se usa para scalar más rápido un ASG
+ - AWS Free Tier permite 10 detailed monitoring  metrics.
+ - EC2 Memory usage is by default not pushed (se tiene que hacer desde dentro de la instancia como un custom metric)
+
+AWS CloudWatch Custom Metrics
+ - Permite definit y enviar nuestra propias métricas a CloudWatch
+ - Posibilidad de usar dimensiones (para segmentra métrics) - Instance.Id, Enviroment.name
+ - Metric resolution
+    - Standard: 1 minuto
+    - High resolution: hasta 1 segunto (StorageResolution API parameter) - High cost
+ - Use API call PutMetricData
+ - Use exponencial back off in case of throtle errors.
+
+AWS CloudWatch Dashboard
+ - Quick access to keys metrics.
+ - Dashboards are global
+ - Dashboards can inclide graphs from different regions.
+ - Change Time Zone & time range del dashboard
+ - Setup automatic refresh (10s,1m,2m,5m,15m)
+ - Pricing: 3 dashboard (con hasta 50 métricas) es gratis
+    - U$S 3 por dashboard por mes
+ AWS CloudWatch Logs
+ - App pueden mandar logs a CloudWatch usando SDK
+ - CloudWatcth can collect log from:
+   - Elastic Beanstal: collection of logs from apps
+   - ECS: collection form Containers
+   - AWS Lambda: collectioin from functions logs
+   - VPC Flow logs: VPC specific logs
+   - API Gateway
+   - CloudTrail based on filter.
+   - CloudWatch log agents: for example on EC2 machine
+   - Route53: Log DNS Queries.
+  - CloudWath Logs puede ir a:
+   - Batch exporter a S3 para archive
+   - Stream to ElasticSearch cluster para mayor analítica.
+ - Logs storage architecture:
+   - Log Groups: arbitrary name, usually representing an application
+   - Log stream: instances within application /log files/Containers
+ - Se puede definir politicas de expiración
+ - usar AWS Cli para tail CloudWatch log
+ - Para enviar los logs a Cloudwatch, verificar bien las IAM permission correctos.
+ - Security: Encription.
+ - CloudWath Logs Metric Filter & Insights
+   - CloudWath Logs puede usar filtros por expresiones
+     - Ej: buscar una IP dento de un Log.
+     - Metric Filters can be used to trigger Alarms
+   - CloudWatch logs insights se usa para hacer queries en los logs y agregar los queries a los CloudWatch Dashboards.
+CloudWatch Logs for EC2 
+ - Hay que instalar un agente para enviar los logs a CloudWatch log.
+ - Se pueden poner en servidores on-premise too.
+ - Logs agents & Unified Agent
+   - For virtual server EC2, on-premise,
+     - Logs Agent - Old version, Only send to CloudWatch Logs
+     - Unified Agent - Collect additional system metrics such as RAM, CPU, etc. / Collect logs to send to CloudWatch Logs / Centralized configuration using SSM Parameter Store.
+   - CloudWatch Unified Agent - Metrics
+      - On Linux servers para más granularidad.
+       - CPU
+       - Disk metrics
+       - RAM
+       - Netstat
+       - Processes
+       - Swap Space
+AWS CloudWath Alarms 
+  - Las alarmas están basadas en un trigger notification for a metric.
+  - Las alarmas puede ira a un Auto Scaling, EC2 Actions, SNS notification
+  - Varias opciones (sampling,%,max,min,etc...)
+  - Estados de las alarmas: OK, INSUFFICIENT_DATA, ALARM
+  - Periodo: Tiempo en segundos para evaluar la métrica
+     High resolution custom metrics: can only choose 10 sec or 30 sec.
+
+EC2 Instance Recovery with CloudWatch Alarms.
+  - Status Check:
+    - Instance Status= check the EC2 VM
+    - System Status = check the underlying hardware.
+    - Si la alarma StatusCheckFailed_System, ejecuta un EC2 Instance Recorvery.
+    - Recovery: Same Private, Public, Elastic IP, metadata, placement group
+      Los datos se pierden si no están en una EBS volume.
+
+AWS ClouWatch Event
+ - Schedule: Cron jobs
+ - Event patterns: Event rules to react to a service doing something.
+   - Ex: CodePipeline state chages"
+ - Triggers to Lambda functions, SQS/SNS/Kinesis messages
+ - CloudWatch Event creates a small JSON document  to give Information about the change.
+
+AWS CloudTrail  
+ - PRovee gobernanza, compliance y auditoria  para las AWS Accounut.
+ - ClodTrail está habilitado por defecto.
+ - Get an history of events / API Calls realizadas por: Consola,SDK, CLi, AWS Services.
+ - Se pueden mandar todos a CloudWatch.
+ - Si hay que ver que usuario hizo que cosa, primero ir a CloudTrail.
+
+AWS Config
+ - Ayuda con la auditoria y grabar compliacne de los AWS resources.
+ - Sirve para grabar configuraciones y sus cambios en el tiempo.
+ - Posibilidad de guardar los datos en S3 (analizarlos con Athena)
+ - Que preguntas pueden ser resueltas por AWS Config?:
+    - hay un acceso irrestricto ssh en mi security group?
+    - My bucket tiene un acceso publico?
+    - Como cambio mi configuración a ALB en el tiempo?
+ - Se pueden recicibir alertas por SNS
+ - AWS Config es un servicio por región
+ - Se pueden centralizar a través de regiones y cuentas.
+ AWS Config Rules
+  - AWS Managed config rules (over 74)
+  - Make custom config rules (Definidas con Lambda)
+     - Evaluate if each EBS disk is of type gp2
+  - Rules can be ebaluated/triggered:
+     - For each config change
+     - And/or: at regular time intervals.
+     - Puede trigger un Evento de CloudWatch si la rule es non-compliant (and change with Lambda)
+  - Rules can have auto remediations:
+     - Se puede hacer un trigger de autoremediation
+  - AWS Config Rules no previenen acciones para que pasen (no deny)
+  - Pricing: no free tier.
+CloudWath vs CloudTrail vs Config
+• CloudWatch
+  • Performance monitoring (metrics, CPU, network, etc…) & dashboards
+  • Events & Alerting
+  • Log Aggregation & Analysis
+• CloudTrail
+  • Record API calls made within your Account by everyone
+  • Can define trails for specific resources
+  • Global Service
+• Config
+  • Record configuration changes
+  • Evaluate resources against compliance rules
+  • Get timeline of changes and compliance
+################################
+IAM (Avanzado)
+################################
+AWS STS - Security Token service
+ - Allows to grant limited and temporary access to AWS resources
+ - Token is valid for up to 1 hour (must be refreshed)
+ - Assume Role
+     - Con sus own account: para mejorar la seguridad
+     - Cross Account Access: asume el role en la cuenta target para realizar acciones
+ - AssumeRoleWithSAML
+     - return credentials for users logged with SAML
+ - AssumeRoleWithWebIdentity
+     - return creds para usuarios logieado con IdP (Facebook, Google, etc.)
+     - AWS no recomienda esto, sino usar Cognito.
+ - GetSessionToken
+     - For MFA, para usuarios o AWS root account.
+Using STS to Assume a Role
+  - Definimos un IAM Role con nuesta cuenta
+  - Ponemos los accesos en el Role.
+  - Usamos AWS STS para dar las credencailes e impersonate el IAM Role (AssumeRole API)
+  - Temp credencial.
+
+Identity Federation in AWS 
+ - Federaciones se puede hacer de muchas formas.
+ - Usando federation, no es necesario crear IAM users, con creados fuera de AWS.
+SAML 2.0
+ - Para integrar AD / ADFS with AWS
+ - Provides access to AWS Console.
+ - No need to create an IAM users for each employee.
+SAML 2.0 Federation - AD FS
+ - Mismo proceso que con SAML 2.0
+SAML 2.0 Federation
+ - Se tiene que hacer un setup entre AWS IAM y SAML
+ - SAML permite autenticación web y cross domain.
+ - Uses the STS API
+ - Es la "old way".
+
+Custom Identity Broker Application
+ - Para los que no son SAML 2.0
+ - El identity broker debe determinar las IAM policy apropiadas.
+ - Usa STS API: AssumeRole o GetFederationToken.
+
+Web Identity Federation - AssumeRoleWithWebIdentity
+ - No es recomendado por AWS - Hay que usar Cognito.
+
+AWS Directory Services
+ - AWS Managed Microsoft AD
+   - Crear nuestro propio AD en AWS, soporta MFA
+   - Establece una conección de confianza con el AD on-premise.
+ - AD Connector (PROXY)
+   - Directory Gateway (proxy) to redirect to on-premise AD.
+   - Users are managed on the on-premise AD
+ - Simple AD (Nada onpremise)
+   - AD compatible administrado en AWS
+   - No pude hacer join a on-premise AD
+
+AWS Organizations (Servicio Global)
+ - Permite manejar multiples AWS accounts.
+ - La main account es la master.
+ - La otras son cuentas miembros.
+ - Las cuentas miembros solo pueden ser parte de una organización
+ - Facturación Consolidada de todas las cuentas - single payment method
+ - Pricing benefit aggregated usage.
+ - API para automitaza la creación de AWS Accounts.
+
+Multi Account Strategies
+ - Crear cuenta por departamento, por centro de costos, dev/test/proc, por restricciones regulatorioas, para mejor resource isolation (VPC) , para poner limites, isolar para logging
+ - Multi Account vs One Account Multi VPC.
+ - Usar tag standar for billinig purprose
+ - HAbilitar CloudTrail para todas las cuentas y enviar los a s3
+ - Enviar CloudWatch Logs to central logging account.
+ - Cross Account Roles for
+
+Las cuentas se organizan en diferentes OU (Organization Units)
+ - Se puede organizar por Unidad de negocio, Ambiente (test, prod, etc.), Proyectos
+
+Service Control Policies (SCP)
+ - Whitelist or Blacklist IAM actions
+ - Se aplica por OU o Account level
+ - No aplica a la Master Account.
+ - SCP es aplicado a todos los usuarios y roles de la cuenta, incluido root.
+ - SCP no afecta los service-linked
+ - SCP mist have an explicit Allow (does not allow anything by default)
+ - Casos de uso: Restringir el acceso a un servicio, Forzar PCI Compliance deshabiltiando servicios.
+
+AWS Organization - Moving Accounts.
+ - Sacar la cuenta de la vieja organización
+ - Enviar invitación a la nueva organización
+ - Aceptar la invitación de la nueva organización de un miembro
+
+Para la master, sacar todas y se borra la vieja organización y se repite el proceso anterior.
+La Master account se puede mover a cualquier OU dentro de la Organización. La identifica la estrella.
+
+IAM Conditions
+ - aws:SourceIP: - Restringe la IP del Client de las cuales se puede conectar a una API.
+ - aws:RequestedRegion: - Restringe a que región se puede conectar (no importa donde está el cliente) es a que region quiere acceder para hacer que cosa.
+ - Restrict basado en Tags.
+ - Forzar el MFA 
+
+IAM for S3
+ - ListBucket es a nivel de bucket (no de objetos dentro del Bucket)
+ - GetObjet, PutObject, /* a todos los objetos dentro del bucket.
+
+IAM Roles vs Resource Based Policies
+ - Aplicar una policy a un recurso vs aplicar los roles usados como proxy.
+ - Con asumimos los roles, tenes tus permisoso originales y los permisos asignados por el rol.
+ - Cuando usamos una Resource Based Policy, the principal doesn't have to give up his permissions.
+ - RBP soportadas en: Amazon S3, SNS, SQS queues.
+
+IAM Permission Boundaries
+ - IAM Permission Boundaries es soportado para usuarios y roles.
+ - Advanced feature to use a managed policy to set the maximum permissioin an IAM entity can get.
+ - Se pueden combinar con AWS Organization SCP.
+ - Use Cases:
+    - Delegar responsabilidades a no adminsitradores (como crear nuevo usuarios)
+    - Permitier a los desarrolladores para que se autoasignen policitcas y adminsitrar sus permisos.
+    - Restingir a un solo usuario.
+El explicit Deny es más que el Allow.
+
+AWS Resource Access Manager (RAM)
+ - Share AWS resources that you own with other AWS accounts.
+ - Share with any account or within your Organization.
+ - Para no tener recursos duplicados.
+ - VPC Subnets:
+    - allow to have all the resources launched in the same subnets
+    - must be from the same AWS Organizations.
+    - Cannot share security groups and default VPC
+    - Participants can manage their own resources in there
+    - Participants can't view, modify, delete resources that belong to other participants or the owner
+  • AWS Transit Gateway
+  • Route53 Resolver Rules
+  • License Manager Configurations
+Resource Access Manager - VPC example.
+ - Cada cuenta tiene sus recursos, y no pude hacer nada con las otras
+ - Pero las cuentas comparten la red del VPC. 
+ - Pueden conectarse los recursos por sus Security Group.
+
+AWS SSO
+ - Administración centralizada para acceder a multiples cuentas o aplicaciones de terceros.
+ - Integrada con AWS Organization
+ - Soporta SAML 2.0 e integrado con AD on-premise.
+ - Centralized permission management y auditoria con CloudTrail.
+SSO vs AssumeRoleWithSAML
+ - AssumeRoleWithSAML - Se maneja con STS y vamos al portal del 3ero para loginarse.
+ - El login es el del SSO y ya está integrado y te devuelve las credenciales.
+
+AWS Security & Encription
+
+Why encryption?
+Encryption in flight (SSL)
+ - Esto es para evitar el MITM attack (Man in the middle)
+ - SSL certificate HTTPS
+Server side encryption at rest
+ - El Dato es encriptado después de ser recibido en el servidor.
+ - El Dato es desencriptado antes de ser enviado.
+ - Los Keys de Encripción debe ser administradors y el servidor poder acceder a las mismas.
+Client side encryption
+ - El Dato es encriptada por el cliente y nunca desencriptado en el servidor.
+ - Could leverage Envelope Encryption.
+
+AWS KMS (Key Management Service)
+ - Una forma sencilla de controla el acceso a los datos, KMS maneja los keys.
+ - Totalmente integrado con IAM para autorizaciones.
+ - Integrado con EBS, S3, Redshift, RDS, SSM
+ - Se puede usar con el CLI/SDK
+ - Los Keys son de una region especifica
+- KMS - Customer Master Key (CMK) Types
+ - Symmetric (AES-256 keys)
+   - Los servicios de AWS integrados con KMS usan estos keys.
+   - Necesario para Envelope encryption
+   - Nunca tenemos acceso a la Key desencriptada (se tiene que usar la API para usar el key)
+ - Asymmetric (RSA & ECC key pairs)
+   - Public (Encripta) y Private key (Desencripta)
+   - Public Key downloadable, but Private no se puede obtener desencriptada.
+   - Se usa para encripción fuera de AWS que no pueden llamar a API de KMS.
+AWS KMS (Key Manager Service)
+ - Able to fully manage the keys and policies (Create, rotation policies, disable, enable)
+ - Able to aduit key usage (using CloudTrail)
+ - 3 tipos de Customer Master Key (CMK):
+    - AWS Manage Service Default CMK: free
+    - User Keys created in KMS: $1/month
+    - User Keys imported (must be 256-bit simmetric key): $1/month
+    + pago por API call to KMS (0,03/10000 calls)
+AWS KMS 101
+ - Anytime you need to share sensitive information ... KMS
+    - Databes passwords
+    - Credential externat service
+    - Private Key of SSL certificate
+ - Never ever store yout secrets in plaintext, especialy in code
+ - Encrypted secrets puede guardarse en variables de ambiente o en el codigo.
+ - KMS puede ayudar a encriptar hasta 4KB per call.
+ - Si el dato es mayot a 4 KB hay que usar envelope encryption
+ - Para dar acceso a KMS a alguien tenemos que:
+    - Asegurarnos que la Key policy se lo permite al usuario
+    - Que la IAM Policy permite la API Calls
+Copying Snapshots across regions.
+ - Se copia el snashot de una región a otra y se pone un nueva key en la nueva región.
+ - Y luego recreamos el volumen del snapshot.
+KMS Key Policies
+ - similar por S3 bucket policies.
+ - Difference: you cannot control access without them
+ - Defaul KMS Key Policy:
+   - Creado si no se especifica un KSM Key Policy.
+   - Complete access to the key to the root user = entire AWS Account.
+   - Gives access to the IAM Policies to the KMS key
+ - Custom KMS Key Policy:
+   - Definir usuarios, roles que pueden acceder al KMS Key
+   - Definir quienes puede adminsitrar el key
+   - Muy util para cross-account access de tus KMS key.
+Copying Snapshots across accounts.
+
+SSM Parameter Store
+ - Secure Storage for configuration and secrets.
+ - Optional Seamless Encryption using KMS.
+ - Serverless, scalable, durable, easy SDK.
+ - Version tracking de configurations and secrets.
+ - Configuration Management usando path & IAM
+ - Notifications con CloudWatch events
+ - Integration with CloudFormation
+SSM Parameter Store Hierarchy
+ -/my-department/
+   - my-app/
+      - dev/
+         - db-url
+         - db-password
+    - other-app/
+  -/aws/refrence/secretsmanager/secret_ID_in_Secrets_Manager
+  -/aws/service/ami-amazon-linux-latest/
+2 Tiers SSM
+ - Standard tier - 10.000 parametros/4KB/no paramater policies
+ - Advanced tier - 100.000 parametros/8KB/parameter policies.
+Parameters Policies (for advanced parameters)
+ - Allow to assign a TTL to a parameter to force update or delete sensitive data.
+ - Se pueden asignar multiples policies al mismo tiempo.
+
+AWS Secrets Manager
+ - Newer service, meant for storing secrets.
+ - Force rotation of secrets in X days
+ - Automate generation of secrets on rotation (Lambda)
+ - Integration with Amazon RDS (MySQL, PostgreSQL, Aurora)
+ - Secrets are encrypted using KMS
+ - Si dice integrado con RDS y rotación de secretos, usar este servicio.
+ - Si se ve en el exámen rotación de secretos, inovación en RDS/integración con RDS, es Secrets Manager.
+ - Se asigna a una función lambda para rotar el secreto.
+
+CloudHSM
+ - KMS => AWS Manages the software for encryption
+ - CloudHSM => AWS provisions encryption hardware
+ - Dedicated Hardware / Uno maneja todas las claves de encripción.
+ - HSM is tamper resistan, FIPS 140-2 Level 3 compliance
+ - CloudHSM Clusters pueden estar en multiples AZ - must setup.
+ - Soporta encripción simétrica y asimétrica.
+ - No free tier available.
+ - Se debe usar el CloudHSM Client software.
+ - Redshift soporta CloudHSM
+ - Una buena opción para usar SSE-C encription
+
+AWS Shield
+ - AWS Shield Standard:
+    - Free Service.
+    - Provides protection from attacks such as SYN/UDP Floods, Reflection attacks an other Layer 3 o 4 attacks
+ - AWS Shield Advanced:
+    - Servicio de DDoS opcional
+    - Protect sobre ataques más sofisticados en EC2, ELB, CloudFront, Global Accelerator, Route 53.
+    - 25/7 access to AWS DDoS response team 
+
+AWS WAF
+ - Protect sobre exploits de capa 7 /layer 7 is HTTP vs Layer 4 is TCP
+ - Permite solo en 3 - Application Load Balancer, API Gateway, CloudFront
+ - Define Web ACL
+    - Rules can include: IP, HTTP header, HTTP Body, URI strings
+    - Protect from commo attack - SQL injection, XSS
+    - Size contrains, geo-match (block countries)
+    - Rate-Based rules (para contar occurencia del evento) - Para DDoS
+Shared Responsability Model
+ - AWS - Security of the Cloud.
+    - Protecting infra that runs all the AWS Services
+    - Managed Services like S3, DynamoDB, RDS, etc.
+
+ - Customer responsibility - Security en la nube
+   - EC2, adminsitrar el OS del EC2, patches, updates, firewall, network, IAM, etc.
+
+VPC
+ - /32 es solo una IP
+ - /24 = 255.255.255.0 - 
+ - 172.16.0.0 (172.16.0.0/12) => Default in AWS
+
+VPC Walkthrough
+ - Todas las nuevas cuentas tiene un VPC default.
+ - Las nuevas instancias son lanzadas dentro del VPC Default
+ - Default VPC tiene conección a internet y todas las instancias tiene IP pública
+ - public and private DNS name
+Un VPC tiene subnets, route tables, e internet Gateway y Network ACL
+
+- VPC (Virtual Private Cloud)
+  - Hasta 5 VPC por región.
+  - Max CIDR por VPC son 5. For each CIDR:
+     - Min size/28 - 16 IPs 
+     - Max size/16 = 65536 IPs  
+  - Because VPC es privada, solo los rangos privados están disponibles:
+     - 10.0.0.0 - 10.255.255.255 (10.0.0.0/8)
+     - 172.16.0.0 - 172.31.255.255 (172.16.0.0/12)
+     - 192.168.0.0 - 192.168.255.255 /16
+  - Los CIDR no puede overlap con otras redes (ejemplo internas on premise)
+- Tenancy, Default o Tenancy
+- Las subnets son por Availability Zone.
+  - AWS se reserva 5 IPs (las 4 iniciales y la última IP) en cada subnet
+  - 0-Network Address
+  - 1-VPC Router
+  - 2-Mapping amazon DNS
+  - 3-Reservado para uso futuro
+  - 255-Broadcast address
+  ExamTip:
+    - 29 IPs /27 no va, hay que restar 5 (32) mínimo un /26 ... 59 IPs.
+- Internet Gateway
+  - Son lo que nos conectan a internet.
+  - escala horizoantalemnte es HA y redundante
+  - debe se creado separado del VPC
+  - Un VPC puede estar atachado a un IGW y vicevesa.
+  - IGW es a NAT for the instances that have public IPv4
+  - IGW por si mismo no permite el acceso a intenet / Las Route tables también deben ser editadas.
+
+- NAT Instances - Network Address Translate
+  (outdated but stil at the exam)
+  - Allows instances in the private subnets to connect to the internet
+  - Must be launched in a public subnet
+  - Must disable EC2 flag: Source / Destination Check
+  - Must have Elastic IP attached to it
+  - Route table must be configured to route traffic from private subnets to
+  - Es una Linux AMI pre-configurada
+  - No es HA / Hay que crear ASG in Multi AZ
+
+- NAT Gateway
+  - AWS Managed NAT, higher bandwith, better Availability, no admin
+  - Pay by hour of usage and bandwith
+  - NAT is created in specific AZ, usa un EIP
+  - Cannot be used by an instance in that subnet. Requiere IGW.
+  - Es resilente en un mismo AZ.
+  - Para HA, must create mutiple NAT Gateway en multiples AZ para fault-tolerance.
+
+- DNS Resolution in VPC
+  - enableDNSSupport = DNS Resolution setting
+     - Default True 
+     - Siver para decidir si la resolución de DNS es soportada por el VPC.
+     - Si es True, manda las consultas al DNS de AWS 169.254.169.253
+  - enableDNSHostname = DNS Hostname setting
+     - Default False
+     - No hace nada haste que el enableDnsSupport se true.
+     - Si es verdadero, asigna un hostname publico a la instancia de EC2.
+  - Si usamos un custom DNS en un zona privada en Route 53, hay que setear ambos atributos en true.
+
+Diferencias entre Network ACLs & security Group
+
+ - NACL es antes de llegar al Security Group, porque es a nivel de subnet.
+ - Primero evaluas la NACL de la Inbound rules y luego las del Security Group.
+ - Outbound allowed stateful y luego el NACL Outbound rules (stateless)
+ - En NACL Se fija siempre entrada y salida.
+ - En
+
+ECS - Está compuesto por:
+  - ECS Core - Se da en un EC2
+  - Fargate: Running ECS tasks (Serverless)
+  - EKS: Running ECS on AWS Kubernetes (running on EC2)
+  - ECR: Docker container Registry hosted por AWS.
+Sobre ECS Core y ECR.
+IAM Security en ECS tasks.
+
+AWS ECS - Use Cases
+ - Correr Microservicios
+   - Muchos docker containers en la misma máquina.
+   - Easy sevice discovery feature
+   - Integración directa en ALB
+   - Auto scaling capability
+ - Run batch processing/scheduled tasks
+   - Schedule ECS containers to run on On-Demand/Reserved/Spot instances.
+ - Migrate application to the Cloud.
+
+Conceptos.
+ - 1ero. ECS Cluster: un set de EC2 instances.
+ - 2do. ECS service: es una aplicación que corre en el ECS cluster.
+ - 3ro. ECS tasks + definition: container running to create the application.
+
+AWS ECS - ALB Integration
+ - ALB tiene una integración directa con un feature llamado "port mapping"
+ - Permite correr multiples instancias de la misma aplicacion en la misma EC2 machine.
+ - Use cases:
+    - Increased resiliency.
+    - Maximiza CPU utilization.
+    - Ability to perform rolling upgrades without impacting applpication uptime.
+AWS ECS - ECS Setup & Config file
+ - Ejecutamos un EC2, se intala el ECS agent con un ECS config file.
+ - Linux AMI tiene el ECS agent.
+ - ECS config file /etc/ecs/ecs.config
+   ECS_CLUSTER=
+   ECS_ENGINE_AUTH_DATA= #para mandar imagenes a registry privadas.
+   ECS_AVAILABLE_LOGGING_DRIVERS= #Clodwath cotainer logging.
+   ECS_ENABLE_TASK_IAM_ROLE=true (habilitar IAM para ECS tasks) - El más importante.
+AWS ECR - Elastic Container Registry.
+ - Se mandan por HTTPS, full encription.
+ - Push Image - AWS CodeBuild CICD.
+ECS - IAM Task Roles
+ - EC2 instance role es un IAM role que le permite acceder al ECS service (for the ECS Agent)
+   Ese rol se hereda a todos las tasks de ese EC2
+ - ECS Task role para cada ECS task para realizar las API Calls.
+ - Todo para una Aplicación.
+ - Se usa el "taskRoleArn" parameter en la task definition.
+Fargate
+ - Con Fargate es todo Serverless.
+ - No necesitamos aprovisionar EC2 instances.
+ - Se crean task definitions y corre nuestos containers.
+ - Para escalar, solo incrementar el task number.
+
+EKS Overview
+ - Es para lanzar y adminsitrar Clusters de Kubernetes en AWS.
+ - Es una alternativa a ECS, similar goal but different API.
+ - EKS soporta EC2 para los Worker nodes o Fargate para containers serverless.
+Casos de uso: Si ya tenemos Kubernetes on premise o en otra nube y quieren migrar a AWS usando kubernetes.
+
+AWS Step functions
+ - Build severless visual workflow to orchestrate las funciones Lambda.
+ - El Flujo se representa como un JSON "State machine".
+ - Features: sequence, parallel, conditions, timeouts, erro handling...
+ - Se puede integrar con EC2, ECS, On premise, API Gateway
+ - Maximum execution time of 1 year.
+ - Possibiliti to implement human approval.
+ - Use Cases:
+    - Data Processing, Web app, any workflow.
+ - Visual workflow in Step Functions.
+
+AWS SWF - Simple Workflow Service
+ - Coordinar el trabajo entre aplicaciones.
+ - El codigo corre en EC2 (no serverless). 1 year max runtime.
+ - "active step" y "decision step".
+ - Tiene "human intervention" step.
+ - Step Functions es recomendado para nuevas aplicaciones, excepto:
+    - External signal para intervenir en el proceso.
+    - child process that return value to parent process.
+
+Amazon EMR
+ - EMR - Elastic MapReduce.
+ - EMR helps creating Hadoop clusters to analyze and process vas amount of data.
+ - El Cluster puede estar hecho por cientos de EC2.
+ - Soporta Apache Spark, HBase, Presto, Flink ...
+ - EMR se ocupa de aprovisionar y configurar todo.
+ - Auto-scaling e integrado con Spot-instances.
+ - Use cas: data processing, machine learning, web index, big data.
+
+AWS Glue
+ - Full Managed ETL (Extract, tranform, Load) service.
+ - Automating time consuming steps of data preparation for analysis.
+ - Serverless, pay as you go, fully managed, sobre apache spark.
+ - Crawls data sources (schema inference)
+ - Automated Code Generation.
+ - Sources: Amazon Aurora, RDS, Redshift & S3.
+ - Glue Data Catalog: Metadata of the Source Tables.
+
+AWS Opsworks
+ - Chef & Puppet Managed.
+ - Alternative to AWS SSM.
+ - Si necesitamos Chef & Puppet need AWS Opsworks.
+ - Sirven para Configuration as Code.
+ - Works on Linux/Windows.
+ - Se pueden automatizar: cuentas de usuarios, ntp, cron, packages, devices...
+ - "Recipes" en Chef y "Manifest" en Puppet.
+ - Son porque son Open Source para todos.
+
+AWS ElasticTrasncoder
+ - Convert media files en varios formatos apra Tablets, PC, Smartphone.
+ - bit rate, thumbnail, watermark, DRM, encryption, progressive download.
+ - 4 componentes
+    - Jobs:
+    - Pipelines:
+    - Presets: Template for converting media.
+    - Notificaciones
+ - Pay for what you use, scale automatic, fully managed.
+
+AWS WorkSpcaces
+ - MAnaged Secure Cloud Desktop.
+ - On Demand, pay per by usage.
+ - Elimintate on premise VDI.
+ - Integrate with AD
+ - Secure, Encrypted, Newtok Isolation.
+
+AWS AppSync
+ - Store and sync data across mobile and web apps en tiempo real.
+ - Una GraphQL en backend.
+ - Client Code can be generated automatically.
+ - Integration con DynamoDB/Lambda
+ - Real time subscriptions
+ - Offline data sync (replace Cognito Sync)
+ - Fine Grained Security.
+
+Well Architected Framework
+ - Stop guessing your capacity needs.
+ - Test systemas at production scale.
+ - Automatiza para experimentación fácil
+ - Permitir evolucionar la arquitectura.
+ - Drive Architecture usign data.
+ - Improve through game days.
+
+5 Pillas:
+  - Operational Excellence
+  - Security
+  - Reliability
+  - Performance Efficiency
+  - Cost Optimization
+
+  - No se balancean, Son Synergy.
+
+Questions:
+  - Well-Architectured Tool.
+
+Operational Excellence
+AWS Services
+ Prepare
+   AWS CloudFormation, AWS Config
+ Operate
+   CloudFormation, Config, CloudTrail, CloudWatch, X-Ray (API Calls monitoring)
+ Evolve
+   CloudFormation, CodeBuild, CodeCommit, CodeDeploy, CodePipeline
+
+Security
+
+Trysted Advisor
+ - No todo es gratis.
+ - Se puede habilitar un email semanal desde la consola.
+ - Full Trusted Advisor - disponible para Busness and Enterprise support plans.
+   - Envia alarmas a través de Cloudwatch cuande se llega al límite.
+
+------------------------
+Practice makes perfect
+------------------------
+Hands on siempres es mejor.
+
+Primero  por eliminación - sacar mejor las que no son.
+Hay varias trick questions.
+Si pensamos que es algo muy rebuscado complicado, seguramente está mal.
+
+Skim the AWS Whitepapers.
+Read each services FAQ.
+
+Meterse en la AWS Community. Do the practice test in this section.
+re-invent videos on Youtube.
+
+
+
+
